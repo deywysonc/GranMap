@@ -1,0 +1,40 @@
+{
+	email {$GRANMAP_TLS_EMAIL}
+}
+
+{$GRANMAP_APP_HOST} {
+	encode zstd gzip
+
+	handle_path /downloads/* {
+		root * /srv/granmap/downloads
+		header Content-Disposition "attachment"
+		file_server
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=()"
+	}
+	root * /srv/granmap/app
+	try_files {path} /index.html
+	file_server
+}
+
+{$GRANMAP_ADMIN_HOST} {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Permissions-Policy "camera=(), geolocation=(), microphone=()"
+	}
+	root * /srv/granmap/admin
+	try_files {path} /index.html
+	file_server
+}
+
+{$GRANMAP_API_HOST} {
+	encode zstd gzip
+	reverse_proxy backend:8000
+}

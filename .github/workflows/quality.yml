@@ -1,0 +1,87 @@
+name: GranMap quality
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+        working-directory: backend
+      - run: python -m unittest discover -v
+        working-directory: backend
+
+  backend-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: granmap_test
+          POSTGRES_USER: granmap
+          POSTGRES_PASSWORD: granmap-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U granmap -d granmap_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      GRANMAP_DATABASE_URL: postgresql://granmap:granmap-ci@127.0.0.1:5432/granmap_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-production.txt
+      - run: pip install -r requirements-production.txt
+        working-directory: backend
+      - run: alembic upgrade head
+        working-directory: backend
+      - run: python postgres_smoke.py
+        working-directory: backend
+
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin_web/package-lock.json
+      - run: npm ci
+        working-directory: admin_web
+      - run: npm test
+        working-directory: admin_web
+      - run: npm run build
+        working-directory: admin_web
+
+  flutter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: app
+      - run: flutter analyze
+        working-directory: app
+      - run: flutter test
+        working-directory: app
+      - run: flutter build web --release
+        working-directory: app

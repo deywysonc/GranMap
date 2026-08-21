@@ -1,0 +1,53 @@
+name: granmap
+
+services:
+  database:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: granmap
+      POSTGRES_USER: granmap
+      POSTGRES_PASSWORD: ${GRANMAP_POSTGRES_PASSWORD:-granmap-local-change-me}
+    volumes:
+      - granmap_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U granmap -d granmap"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      GRANMAP_ENVIRONMENT: ${GRANMAP_ENVIRONMENT:-development}
+      GRANMAP_DATABASE_URL: postgresql://granmap:${GRANMAP_POSTGRES_PASSWORD:-granmap-local-change-me}@database:5432/granmap
+      GRANMAP_PUBLIC_ORIGINS: ${GRANMAP_PUBLIC_ORIGINS:-http://localhost:8080}
+      GRANMAP_COOKIE_SECURE: ${GRANMAP_COOKIE_SECURE:-false}
+      GRANMAP_TRUSTED_PROXY_HEADERS: "true"
+      GRANMAP_METRICS_ENABLED: "true"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 8s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: admin_web
+      args:
+        VITE_GRANMAP_API_URL: /api
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  granmap_postgres:

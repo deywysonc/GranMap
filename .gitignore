@@ -1,0 +1,45 @@
+# Flutter / Dart
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/android/.gradle/
+app/**/Flutter/ephemeral/
+app/android/key.properties
+app/android/*.jks
+app/android/*.keystore
+
+# Node / Vite
+admin_web/node_modules/
+admin_web/dist/
+
+# Artefatos locais de distribuição
+dist/
+
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+
+# Banco operacional local
+backend/granmap.db
+backend/granmap_demo.db
+.demo-pids.json
+
+# IDE / sistema
+.idea/
+.vscode/
+*.log
+Thumbs.db
+.DS_Store
+
+# Perfis e evidências locais de QA (podem conter sessões autenticadas)
+.qa-edge-profile/
+qa-*.png
+
+# Cópias locais de trabalho
+_backups/
+
+# Segredos e chaves de infraestrutura
+.secrets/
+deploy/oracle/.env

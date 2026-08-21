@@ -1,0 +1,97 @@
+{
+  "survey": {
+    "id": "gran-tiete-2026-08-20",
+    "campus": "Faculdade Gran Tietê",
+    "capturedAt": "2026-08-20",
+    "status": "labeling"
+  },
+  "captures": [
+    {
+      "id": "capture_entrada_gran_180941",
+      "sourceFile": "VID_20260820_180941.mp4",
+      "kind": "walkthrough_video",
+      "areaLabel": "Entrada Gran",
+      "floor": 0,
+      "anchorPoiId": "entrada_gran",
+      "anchorNodeId": "ground_c1_start",
+      "durationSeconds": 84.6,
+      "resolution": {
+        "width": 3840,
+        "height": 2160,
+        "rotationDegrees": -90
+      },
+      "codec": "hevc",
+      "routeEnd": null,
+      "mappingStatus": "start_anchored_end_pending",
+      "publicationStatus": "privacy_review_required",
+      "notes": "Identificado pelo autor como percurso da Entrada Gran. Remover áudio e revisar rostos, documentos e placas antes da publicação."
+    },
+    {
+      "id": "capture_rampa_subida_181233",
+      "sourceFile": "VID_20260820_181233.mp4",
+      "kind": "vertical_transition_walkthrough",
+      "areaLabel": "Rampa de acesso ao piso superior",
+      "direction": "ascending",
+      "floorStart": 0,
+      "floorEnd": 1,
+      "anchorPoiId": "rampa_caracol",
+      "startNodeId": "ground_spiral_ramp_landing",
+      "endNodeId": "upper_spiral_ramp",
+      "durationSeconds": 173.2,
+      "resolution": {
+        "width": 3840,
+        "height": 2160,
+        "rotationDegrees": -90
+      },
+      "codec": "hevc",
+      "mappingStatus": "vertical_nodes_and_visual_form_anchored_metrics_pending",
+      "publicationStatus": "privacy_review_required",
+      "notes": "Identificado pelo autor como subida da rampa do térreo para a parte superior. O mapa v7 representa a conexão como rampa em lances; o ID legado rampa_caracol foi mantido para compatibilidade. Escala e inclinação continuam pendentes de medição. Remover áudio e revisar rostos, documentos e placas antes da publicação."
+    },
+    {
+      "id": "capture_area_agronomia_181639",
+      "sourceFile": "VID_20260820_181639.mp4",
+      "kind": "area_documentation_video",
+      "areaLabel": "Área de Agronomia",
+      "floor": 1,
+      "anchorPoiId": "area_agronomia",
+      "anchorNodeId": "upper_agronomy",
+      "durationSeconds": 12.1,
+      "resolution": {
+        "width": 3840,
+        "height": 2160,
+        "rotationDegrees": -90
+      },
+      "codec": "hevc",
+      "mappingStatus": "poi_anchored_boundary_pending",
+      "publicationStatus": "privacy_review_required",
+      "notes": "Identificado pelo autor como registro com ênfase no espaço de Agronomia. Usar como referência visual do POI e para corrigir formato, limites, acessos e elementos externos quando houver levantamento métrico. Remover áudio e revisar pessoas antes da publicação."
+    },
+    {
+      "id": "capture_corredor_entrada_tyto_182059",
+      "sourceFile": "VID_20260820_182059.mp4",
+      "kind": "partial_corridor_documentation_video",
+      "areaLabel": "Corredor da Entrada Tyto/Gran + Secretaria",
+      "floor": 0,
+      "zoneId": "zone_ground_c2",
+      "anchorPoiId": "entrada_tyto_gran",
+      "anchorNodeId": "ground_c2_start",
+      "relatedPoiIds": [
+        "secretaria"
+      ],
+      "relatedNodeIds": [
+        "ground_secretaria_door"
+      ],
+      "durationSeconds": 3.2,
+      "resolution": {
+        "width": 3840,
+        "height": 2160,
+        "rotationDegrees": -90
+      },
+      "codec": "hevc",
+      "mappingStatus": "pois_anchored_corridor_geometry_pending",
+      "publicationStatus": "privacy_review_required",
+      "notes": "Registro parcial: corredor da Entrada Tyto/Gran, com a Secretaria no mesmo trecho. Segundo o autor, a porta visível ao fundo é a entrada real. Corrigir orientação e posição relativa da entrada no mapa após levantamento métrico. Remover áudio e revisar pessoas, documentos e placas antes da publicação."
+    }
+  ]
+}

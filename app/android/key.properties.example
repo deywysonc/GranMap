@@ -1,0 +1,4 @@
+storePassword=troque-esta-senha
+keyPassword=troque-esta-senha
+keyAlias=granmap
+storeFile=C:\\caminho-seguro\\granmap-release.jks

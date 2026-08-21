@@ -1,0 +1,77 @@
+name: granmap-oracle
+
+services:
+  database:
+    build:
+      context: ../..
+      dockerfile: deploy/oracle/PostGIS.Dockerfile
+    environment:
+      POSTGRES_DB: granmap
+      POSTGRES_USER: granmap
+      POSTGRES_PASSWORD: ${GRANMAP_POSTGRES_PASSWORD:?Defina GRANMAP_POSTGRES_PASSWORD}
+    volumes:
+      - granmap_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U granmap -d granmap"]
+      interval: 8s
+      timeout: 4s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: backend/Dockerfile
+    environment:
+      GRANMAP_ENVIRONMENT: production
+      GRANMAP_DATABASE_URL: postgresql://granmap:${GRANMAP_POSTGRES_PASSWORD}@database:5432/granmap
+      GRANMAP_PUBLIC_ORIGINS: https://${GRANMAP_APP_HOST},https://${GRANMAP_ADMIN_HOST}
+      GRANMAP_COOKIE_SECURE: "true"
+      GRANMAP_TRUSTED_PROXY_HEADERS: "true"
+      GRANMAP_METRICS_ENABLED: "true"
+      GRANMAP_COMMERCIAL_LAUNCH: "false"
+      GRANMAP_INSTITUTIONAL_MAP_APPROVED: "false"
+      GRANMAP_FIELD_CALIBRATION_COMPLETED: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+
+  gateway:
+    image: caddy:2.10-alpine
+    environment:
+      GRANMAP_APP_HOST: ${GRANMAP_APP_HOST:?Defina GRANMAP_APP_HOST}
+      GRANMAP_ADMIN_HOST: ${GRANMAP_ADMIN_HOST:?Defina GRANMAP_ADMIN_HOST}
+      GRANMAP_API_HOST: ${GRANMAP_API_HOST:?Defina GRANMAP_API_HOST}
+      GRANMAP_TLS_EMAIL: ${GRANMAP_TLS_EMAIL:?Defina GRANMAP_TLS_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../../app/build/web:/srv/granmap/app:ro
+      - ../../admin_web/dist:/srv/granmap/admin:ro
+      - ../../dist:/srv/granmap/downloads:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  granmap_postgres:
+  caddy_data:
+  caddy_config:

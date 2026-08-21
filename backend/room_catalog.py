@@ -1,0 +1,41 @@
+ROOMS = [
+    ("alan_turing", "Alan Turing (Informática)", 0, "Gran Tietê"),
+    ("cora_coralina", "Cora Coralina (Professores)", 0, "Gran Tietê"),
+    ("henry_ford", "Henry Ford", 0, "Gran Tietê"),
+    ("albert_einstein", "Albert Einstein", 0, "Gran Tietê"),
+    ("socrates", "Sócrates", 0, "Gran Tietê"),
+    ("karl_marx", "Karl Marx", 0, "Gran Tietê"),
+    ("peter_drucker", "Peter Drucker", 0, "Gran Tietê"),
+    ("paulo_freire", "Paulo Freire", 0, "Gran Tietê"),
+    ("carlos_drummond", "Carlos Drummond", 0, "Gran Tietê"),
+    ("zilda_arns", "Zilda Arns", 0, "Gran Tietê"),
+    ("maria_lacerda", "Maria Lacerda", 0, "Gran Tietê"),
+    ("rachel_de_queiroz", "Rachel de Queiroz", 0, "Gran Tietê"),
+    ("lab_quimica", "Laboratório de Química", 0, "Gran Tietê"),
+    ("lab_microscopia", "Laboratório de Microscopia", 0, "Gran Tietê"),
+    ("lab_informatica", "Laboratório de Informática", 0, "Gran Tietê"),
+    ("clinica_escola", "Clínica Escola", 0, "Gran Tietê"),
+    ("leonardo_da_vinci", "Leonardo da Vinci", 0, "Gran Tietê"),
+    ("isaac_newton", "Isaac Newton", 0, "Gran Tietê"),
+    ("van_gogh", "Van Gogh", 1, "Gran Tietê"),
+    ("cecilia_meireles", "Cecília Meireles", 1, "Gran Tietê"),
+    (
+        "lab_kaisen_machado_assis",
+        "Laboratório Kaisen (Machado de Assis)",
+        1,
+        "Gran Tietê",
+    ),
+    ("tarsila_do_amaral", "Tarsila do Amaral", 1, "Gran Tietê"),
+    ("auditorio", "Auditório", 1, "Gran Tietê"),
+    ("monteiro_lobato", "Monteiro Lobato", 1, "Gran Tietê"),
+    ("fayol", "Fayol", 1, "Gran Tietê"),
+    ("ayrton_senna", "Ayrton Senna", 1, "Gran Tietê"),
+    ("santos_dummont", "Santos Dummont", 1, "Gran Tietê"),
+]
+
+
+LEGACY_ROOM_MAP = {
+    "room_201": "alan_turing",
+    "room_202": "henry_ford",
+    "lab_1": "lab_informatica",
+}
