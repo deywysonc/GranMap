@@ -33,7 +33,7 @@ type User = {
   group_name?: string
   created_at?: string
 }
-type AuthResult = { user: User; csrf_token: string }
+type AuthResult = { user: User; csrf_token?: string; token?: string }
 type Schedule = {
   id: number
   course_id: number
@@ -128,13 +128,18 @@ type IntegrationStatus = {
   message: string
 }
 
+const ADMIN_AUTH_MODE =
+  import.meta.env.VITE_GRANMAP_ADMIN_AUTH_MODE === 'bearer' ? 'bearer' : 'cookie'
+
 
 function App() {
   const [tab, setTab] = useState('dashboard')
   const [online, setOnline] = useState(false)
-  const [token, setToken] = useState(
-    () => hasAdminSession() ? 'cookie' : '',
-  )
+  const [token, setToken] = useState(() => {
+    const storedToken = sessionStorage.getItem('granmap.admin.token')
+    if (storedToken) return storedToken
+    return hasAdminSession() ? 'cookie' : ''
+  })
   const [user, setUser] = useState<User | null>(null)
   const [courses, setCourses] = useState<Course[]>([])
   const [subjects, setSubjects] = useState<Subject[]>([])
@@ -258,16 +263,24 @@ function App() {
 
   const login = async (email: string, password: string) => {
     setError('')
-    const result = await postJson<AuthResult>('/auth/web-login', { email, password })
+    const endpoint = ADMIN_AUTH_MODE === 'bearer' ? '/auth/login' : '/auth/web-login'
+    const result = await postJson<AuthResult>(endpoint, { email, password })
     if (!['admin', 'coordination', 'moderator'].includes(result.user.role)) {
       throw new ApiError(
         'Esta conta não possui acesso ao painel administrativo.',
         403,
       )
     }
-    sessionStorage.removeItem('granmap.admin.token')
-    sessionStorage.setItem('granmap.admin.session', 'cookie')
-    setToken('cookie')
+    if (ADMIN_AUTH_MODE === 'bearer') {
+      if (!result.token) throw new ApiError('Sessão não recebida pelo backend.', 500)
+      sessionStorage.removeItem('granmap.admin.session')
+      sessionStorage.setItem('granmap.admin.token', result.token)
+      setToken(result.token)
+    } else {
+      sessionStorage.removeItem('granmap.admin.token')
+      sessionStorage.setItem('granmap.admin.session', 'cookie')
+      setToken('cookie')
+    }
     setUser(result.user)
   }
 

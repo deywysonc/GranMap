@@ -35,6 +35,8 @@ services:
     envVars:
       - key: VITE_GRANMAP_API_URL
         value: https://granmap-api-deywyson.onrender.com
+      - key: VITE_GRANMAP_ADMIN_AUTH_MODE
+        value: bearer
     routes:
       - type: rewrite
         source: /
