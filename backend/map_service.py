@@ -10,8 +10,9 @@ from db import connect
 
 ROOT = Path(__file__).resolve().parents[1]
 STRUCTURAL_MAP_PATH = (
-    ROOT / "app" / "assets" / "maps" / "gran_tiete_user_corrected_v10.json"
+    ROOT / "app" / "assets" / "maps" / "gran_tiete_upper_floorplan_v11.json"
 )
+STRUCTURAL_MAP_VERSION = "upper-floorplan-v11"
 
 
 @dataclass(frozen=True)
@@ -116,27 +117,48 @@ def decode_map_json(value) -> dict[str, Any]:
 
 def ensure_initial_map() -> None:
     with connect() as con:
-        existing = con.execute("SELECT id FROM map_versions LIMIT 1").fetchone()
+        existing = con.execute(
+            "SELECT id FROM map_versions WHERE version = ? LIMIT 1",
+            (STRUCTURAL_MAP_VERSION,),
+        ).fetchone()
         if existing is not None:
             return
 
     data = json.loads(STRUCTURAL_MAP_PATH.read_text(encoding="utf-8"))
     checksum = map_checksum(data)
     with connect() as con:
+        published = con.execute(
+            """
+            SELECT version FROM map_versions
+            WHERE status = 'published'
+            ORDER BY published_at DESC, id DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        should_publish = published is None or published["version"] in {
+            "user-corrected-v10",
+            "structural-v7",
+            "topological-v8",
+        }
+        if should_publish:
+            con.execute(
+                "UPDATE map_versions SET status = 'archived' WHERE status = 'published'"
+            )
         con.execute(
             """
             INSERT INTO map_versions(
                 version, name, schema_version, status, map_json,
                 checksum, notes, published_at
-            ) VALUES (?, ?, 1, 'published', ?, ?, ?, ?)
+            ) VALUES (?, ?, 1, ?, ?, ?, ?, ?)
             """,
             (
-                "user-corrected-v10",
-                "Planta corrigida pelos vídeos e marcações do autor",
+                STRUCTURAL_MAP_VERSION,
+                "Piso superior baseado na planta arquitetônica",
+                "published" if should_publish else "draft",
                 canonical_json(data),
                 checksum,
-                "Dois corredores paralelos, quadra depois deles, serviços além da quadra e lanchonete/rampa no fim do corredor Gran; escala ainda provisória.",
-                utc_now_iso(),
+                "Planta superior oficial em escala relativa, com a rampa acrescentada no canto inferior esquerdo conforme orientação do autor; distâncias ainda provisórias.",
+                utc_now_iso() if should_publish else None,
             ),
         )
         con.commit()

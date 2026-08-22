@@ -7,7 +7,7 @@ import 'package:granmap/navigation/a_star.dart';
 import 'package:granmap/navigation/navigation_service.dart';
 
 Future<CampusMap> loadCorrectedCampus() async {
-  final raw = await File('assets/maps/gran_tiete_user_corrected_v10.json')
+  final raw = await File('assets/maps/gran_tiete_upper_floorplan_v11.json')
       .readAsString();
   return CampusMap.fromJson(jsonDecode(raw) as Map<String, dynamic>);
 }
@@ -20,16 +20,19 @@ void main() {
   });
 
   test('declara explicitamente que geometria e distâncias são provisórias', () {
-    expect(campus.building.version, '0.10-user-corrected-v10');
+    expect(campus.building.version, '0.11-upper-floorplan-v11');
     expect(campus.metadata.roomCatalogStatus, 'real');
-    expect(campus.metadata.geometryStatus, 'topological');
+    expect(campus.metadata.geometryStatus, 'floorplan_relative');
     expect(campus.metadata.distanceStatus, 'provisional');
     expect(campus.metadata.distanceUnit, 'conceptual_unit');
     expect(campus.metadata.hasValidatedMetricGeometry, isFalse);
-    expect(campus.metadata.mapMode, 'author_corrected_floorplan_topology');
+    expect(
+      campus.metadata.mapMode,
+      'upper_floorplan_relative_with_navigation_topology',
+    );
     expect(
       campus.metadata.surveyStatus,
-      'four_walkthroughs_plus_author_floorplan_corrections_v10',
+      'upper_floorplan_pdf_plus_four_walkthroughs_and_author_corrections_v11',
     );
   });
 
@@ -189,10 +192,58 @@ void main() {
       touchingGate.any(
         (edge) =>
             edge.verification == 'user_confirmed' &&
-            (edge.from == 'upper_end' || edge.to == 'upper_end'),
+            (edge.from == 'upper_spine_0' || edge.to == 'upper_spine_0'),
       ),
       isTrue,
     );
+  });
+
+  test('reproduz a sequência longitudinal da planta do piso superior', () {
+    const orderedDoorIds = [
+      'upper_door_0',
+      'upper_door_1',
+      'upper_door_2',
+      'upper_door_3',
+      'upper_door_4',
+      'upper_door_5',
+      'upper_door_6',
+      'upper_door_7',
+      'upper_door_8',
+    ];
+    final doors = orderedDoorIds.map((id) => campus.nodeById(id)!).toList();
+    for (var index = 1; index < doors.length; index++) {
+      expect(doors[index].displayX, greaterThan(doors[index - 1].displayX));
+    }
+    expect(doors.map((door) => door.displayY).toSet(), hasLength(1));
+
+    final upperZoneIds = campus.zones
+        .where((zone) => zone.floor == 1)
+        .map((zone) => zone.id)
+        .toSet();
+    expect(
+      upperZoneIds,
+      containsAll({
+        'zone_upper_corridor',
+        'zone_upper_auditorio',
+        'zone_upper_bwc_masc',
+        'zone_upper_bwc_fem',
+        'zone_upper_archive',
+      }),
+    );
+  });
+
+  test('posiciona a rampa no canto inferior esquerdo do piso superior', () {
+    final ramp = campus.poiById('rampa_caracol')!;
+    final upperDoors = campus.nodes.where(
+      (node) => node.id.startsWith('upper_door_'),
+    );
+
+    expect(ramp.floor, 1);
+    expect(ramp.displayX, lessThan(upperDoors.first.displayX));
+    expect(ramp.displayY, lessThan(upperDoors.first.displayY));
+    expect(campus.poiById('arquivo_superior'), isNotNull);
+    expect(campus.poiById('bwc_masculino_superior'), isNotNull);
+    expect(campus.poiById('bwc_feminino_superior'), isNotNull);
   });
 
   test('rota entre corredores preserva a demo sem fingir conexão filmada', () {
@@ -239,7 +290,7 @@ void main() {
   test('separa coordenadas de navegação da composição visual corrigida', () {
     expect(
       campus.metadata.coordinateSystem,
-      'navigation_conceptual_xyz_with_independent_topology_xy',
+      'navigation_conceptual_xyz_with_floorplan_display_xy',
     );
     expect(
       campus.nodes.any(

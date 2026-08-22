@@ -126,15 +126,18 @@ class _CampusPainter extends CustomPainter {
     Offset project(NavigationNode node) =>
         projectCoordinates(node.displayX, node.displayY);
 
+    final labeledZoneNames = <String>{};
     for (final zone in floorZones) {
       final topLeft = projectCoordinates(zone.x, zone.y + zone.height);
       final bottomRight = projectCoordinates(zone.x + zone.width, zone.y);
       final rect = Rect.fromPoints(topLeft, bottomRight);
       final zoneColor = _zoneColor(zone.type);
       final isUnlocated = zone.verification == 'unlocated';
+      final roomLike = _isRoomZone(zone.type);
+      final radius = Radius.circular(roomLike ? 5 : 12);
 
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+        RRect.fromRectAndRadius(rect, radius),
         Paint()..color = zoneColor.withValues(alpha: isUnlocated ? .03 : .075),
       );
       final zoneOutline = Paint()
@@ -142,35 +145,35 @@ class _CampusPainter extends CustomPainter {
         ..strokeWidth = isUnlocated ? 1.2 : 1.6
         ..style = PaintingStyle.stroke;
       if (!isUnlocated) {
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(rect, const Radius.circular(12)),
-          zoneOutline,
-        );
+        canvas.drawRRect(RRect.fromRectAndRadius(rect, radius), zoneOutline);
       } else {
         _drawDashedRRect(
           canvas,
-          RRect.fromRectAndRadius(rect, const Radius.circular(12)),
+          RRect.fromRectAndRadius(rect, radius),
           zoneOutline,
           dash: isUnlocated ? 4 : 7,
         );
       }
-      final zoneLabel = TextPainter(
-        text: TextSpan(
-          text: zone.name,
-          style: TextStyle(
-            color: zoneColor,
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-            height: 1.25,
+      if (rect.width >= 46 && rect.height >= 22) {
+        final zoneLabel = TextPainter(
+          text: TextSpan(
+            text: zone.name,
+            style: TextStyle(
+              color: zoneColor,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
+            ),
           ),
-        ),
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      )..layout(maxWidth: math.max(50.0, rect.width - 12));
-      zoneLabel.paint(
-        canvas,
-        Offset(rect.center.dx - zoneLabel.width / 2, rect.top + 6),
-      );
+          textDirection: TextDirection.ltr,
+          textAlign: TextAlign.center,
+        )..layout(maxWidth: math.max(40.0, rect.width - 12));
+        zoneLabel.paint(
+          canvas,
+          Offset(rect.center.dx - zoneLabel.width / 2, rect.top + 6),
+        );
+        labeledZoneNames.add(zone.name.toLowerCase());
+      }
     }
 
     final nodeById = {for (final node in campus.nodes) node.id: node};
@@ -264,6 +267,7 @@ class _CampusPainter extends CustomPainter {
               ? _nodeColor(poi.type)
               : colorScheme.primary.withValues(alpha: .72),
       );
+      if (labeledZoneNames.contains(poi.name.toLowerCase())) continue;
       if (!showAllLabels && !isLandmark) continue;
       textPainter.text = TextSpan(
         text: poi.verification == 'unlocated' ? '${poi.name} · ?' : poi.name,
@@ -508,6 +512,19 @@ class _CampusPainter extends CustomPainter {
       case 'court':
       case 'agronomy':
         return const Color(0xFF15803D);
+      case 'corridor_upper':
+        return const Color(0xFF0F766E);
+      case 'classroom':
+        return const Color(0xFF2563EB);
+      case 'laboratory':
+      case 'project_laboratory':
+        return const Color(0xFF0891B2);
+      case 'auditorium':
+        return const Color(0xFF7C3AED);
+      case 'restroom':
+        return const Color(0xFF4F46E5);
+      case 'archive':
+        return const Color(0xFF64748B);
       case 'services':
         return const Color(0xFF6D28D9);
       case 'cafeteria':
@@ -573,6 +590,18 @@ class _CampusPainter extends CustomPainter {
       'construction',
       'agronomy',
       'ramp',
+    }.contains(type);
+  }
+
+  bool _isRoomZone(String type) {
+    return const {
+      'classroom',
+      'laboratory',
+      'project_laboratory',
+      'auditorium',
+      'restroom',
+      'archive',
+      'corridor_upper',
     }.contains(type);
   }
 

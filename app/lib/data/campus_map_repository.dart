@@ -107,14 +107,14 @@ class CampusMapRepository {
     }
 
     final jsonString = await rootBundle.loadString(
-      'assets/maps/gran_tiete_user_corrected_v10.json',
+      'assets/maps/gran_tiete_upper_floorplan_v11.json',
     );
 
     final json = jsonDecode(jsonString) as Map<String, dynamic>;
     return CampusMapSnapshot(
       campus: CampusMap.fromJson(json),
       blockedEdgeIds: const {},
-      version: 'user-corrected-v10-bundled',
+      version: 'upper-floorplan-v11-bundled',
       source: CampusMapSource.bundled,
       warning: 'Usando o mapa incluído no aplicativo; bloqueios recentes podem não aparecer.',
     );

@@ -28,7 +28,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/maps/gran_tiete_user_corrected_v10.json
+    - assets/maps/gran_tiete_upper_floorplan_v11.json
     - assets/walkthroughs/entrada_gran/
     - assets/walkthroughs/rampa_superior/
     - assets/walkthroughs/agronomia/

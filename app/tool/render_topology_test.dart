@@ -8,7 +8,7 @@ import 'package:granmap/theme/granmap_theme.dart';
 import 'package:granmap/widgets/campus_map_canvas.dart';
 
 Future<CampusMap> _loadMap() async {
-  final raw = await File('assets/maps/gran_tiete_user_corrected_v10.json')
+  final raw = await File('assets/maps/gran_tiete_upper_floorplan_v11.json')
       .readAsString();
   return CampusMap.fromJson(jsonDecode(raw) as Map<String, dynamic>);
 }
@@ -42,7 +42,7 @@ void main() {
     await tester.pump();
     await expectLater(
       find.byKey(const ValueKey('topology-map')),
-      matchesGoldenFile('goldens/mapa_corrigido_terreo_v10.png'),
+      matchesGoldenFile('goldens/mapa_corrigido_terreo_v11.png'),
     );
   }, timeout: const Timeout(Duration(seconds: 8)));
 
@@ -56,7 +56,7 @@ void main() {
     await tester.pump();
     await expectLater(
       find.byKey(const ValueKey('topology-map')),
-      matchesGoldenFile('goldens/mapa_corrigido_superior_v10.png'),
+      matchesGoldenFile('goldens/mapa_corrigido_superior_v11.png'),
     );
   }, timeout: const Timeout(Duration(seconds: 8)));
 }

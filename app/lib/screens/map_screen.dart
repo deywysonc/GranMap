@@ -24,9 +24,28 @@ class _MapScreenState extends State<MapScreen> {
     final places = widget.campus.pois
         .where((poi) => poi.floor == _floor)
         .length;
+    final floorItems =
+        widget.campus.floors
+            .map(
+              (floor) => _SelectorItem(
+                floor.level == 0 ? 'T' : '${floor.level}º',
+                floor.level,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+    final mapAccuracy =
+        _floor == 1 &&
+            widget.campus.metadata.geometryStatus == 'floorplan_relative'
+        ? 'planta arquitetônica • distâncias provisórias'
+        : 'estrutura aproximada';
     return Stack(
       children: [
-        Positioned.fill(
+        Positioned(
+          left: 0,
+          right: 0,
+          top: 62,
+          bottom: 132,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 320),
             child: _view == 1
@@ -116,14 +135,7 @@ class _MapScreenState extends State<MapScreen> {
           left: 14,
           top: 76,
           child: _VerticalSelector(
-            items: [
-              _SelectorItem(
-                '2º',
-                widget.campus.floors.any((floor) => floor.level == 2) ? 2 : 1,
-              ),
-              const _SelectorItem('1º', 1),
-              const _SelectorItem('T', 0),
-            ],
+            items: floorItems,
             selected: _floor,
             onSelected: (value) {
               if (widget.campus.floors.any((floor) => floor.level == value)) {
@@ -213,7 +225,7 @@ class _MapScreenState extends State<MapScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        '$places locais • estrutura aproximada',
+                        '$places locais • $mapAccuracy',
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: GranMapColors.textMuted),
                       ),

@@ -5,7 +5,7 @@
 - `app/`: Flutter, experiência do aluno e mapa local-first;
 - `backend/`: FastAPI; SQLite no desenvolvimento e PostgreSQL/PostGIS em produção;
 - `admin_web/`: React/Vite, operação institucional protegida por papéis;
-- `app/assets/maps/gran_tiete_user_corrected_v10.json`: grafo canônico corrigido pelos vídeos e pelas marcações do autor;
+- `app/assets/maps/gran_tiete_upper_floorplan_v11.json`: grafo canônico com o térreo corrigido e o piso superior redesenhado a partir da planta arquitetônica;
 - `backend/room_catalog.py`: contrato dos ambientes acadêmicos no servidor.
 
 ## Fluxos
