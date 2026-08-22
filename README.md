@@ -19,7 +19,12 @@ inventar distâncias físicas.
 - botão para a próxima aula e integração entre grade e navegação;
 - contribuições autenticadas, voto único editável, consenso e reputação;
 - cache e fila offline para propostas e votos;
+- repetição segura com idempotência, retentativa exponencial e fila de falhas recuperável;
 - SQLite local estruturado, credencial no Keychain/Keystore e mapa/grade/notificações em cache;
+- onboarding, consentimento de localização, alto contraste e preferência de rota acessível persistentes;
+- sessões revogáveis, troca/recuperação de senha, exportação e exclusão da conta;
+- modo de manutenção, bloqueio de versões antigas e chaves de funcionalidades controladas pela API;
+- diagnóstico seguro com identificador de requisição e relatório copiável, sem expor o token;
 - notificações de alteração da grade, com leitura e cópia offline;
 - painel institucional com CRUD acadêmico, papéis, conflitos, moderação e auditoria;
 - versões publicáveis do mapa, preview visual, bloqueios de Edge, recálculo e âncoras;
@@ -131,6 +136,22 @@ flutter build appbundle --flavor production --release `
 O backend também bloqueia `GRANMAP_COMMERCIAL_LAUNCH=true` quando planta,
 calibração, SSO, ERP ou push ainda não estiverem configurados. Consulte
 [docs/ENTRADAS_EXTERNAS.md](docs/ENTRADAS_EXTERNAS.md).
+
+Para a publicação gerenciada, consulte
+[deploy/cloudrun/README.md](deploy/cloudrun/README.md) para a API e
+[deploy/cloudflare/README.md](deploy/cloudflare/README.md) para o painel e os
+arquivos grandes.
+
+Para o servidor ARM64 compartilhado do Web Lab/Coolify, use
+[`compose.coolify.yaml`](compose.coolify.yaml) e o roteiro em
+[`deploy/coolify/README.md`](deploy/coolify/README.md). Essa variante constrói
+PostGIS para ARM64, aplica limites de CPU/RAM e não ocupa portas públicas do host.
+
+O APK Android atual, separado por arquitetura e validado com assinatura v2,
+está em [deliverables/GranMap-Demo-v1.3.0-arm64-v8a.apk](deliverables/GranMap-Demo-v1.3.0-arm64-v8a.apk).
+Use-o em celulares Android atuais; as variantes ARM de 32 bits e x86_64 também
+estão na mesma pasta. Consulte [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
+antes de distribuir uma versão pública.
 
 ## Limite honesto da demo
 

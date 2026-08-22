@@ -89,6 +89,34 @@ class CommunityFlowTest(unittest.TestCase):
         self.assertEqual(vote_count, 5)
         self.assertEqual(reputation, 3)
 
+    def test_idempotency_key_does_not_duplicate_proposal_or_reputation(self):
+        payload = main.ProposalIn(
+            subject="Banco de Dados",
+            from_room="Alan Turing",
+            to_room="Henry Ford",
+            reason="Mudança informada pelo professor.",
+        )
+        first = main.create_proposal(
+            payload,
+            authorization=self.authorization(0),
+            idempotency_key="proposal-student-123",
+        )
+        repeated = main.create_proposal(
+            payload,
+            authorization=self.authorization(0),
+            idempotency_key="proposal-student-123",
+        )
+
+        self.assertEqual(first["id"], repeated["id"])
+        with db.connect() as con:
+            count = con.execute("SELECT COUNT(*) FROM proposals").fetchone()[0]
+            reputation = con.execute(
+                "SELECT reputation FROM users WHERE email = ?",
+                ("pessoa0@teste.local",),
+            ).fetchone()[0]
+        self.assertEqual(count, 1)
+        self.assertEqual(reputation, 1)
+
     def test_official_write_requires_coordination_or_admin(self):
         with self.assertRaises(Exception) as raised:
             main.create_course(

@@ -23,7 +23,11 @@ describe('cliente seguro do GranMap Admin', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
     const options = fetchMock.mock.calls[0][1] as RequestInit
     expect(options.credentials).toBe('include')
-    expect(options.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-test' })
+    expect(options.headers).toMatchObject({
+      'X-CSRF-Token': 'csrf-test',
+      'X-GranMap-Admin-Version': '0.5.0',
+    })
+    expect((options.headers as Record<string, string>)['X-Request-ID']).toBeTruthy()
   })
 
   it('não trata uma resposta 401 como sucesso', async () => {

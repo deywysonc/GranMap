@@ -46,11 +46,17 @@ class MapOperationsTest(unittest.TestCase):
         self._temporary.cleanup()
 
     def test_conceptual_map_is_valid_and_published(self):
-        current = map_router.current_map(Response())
+        response = Response()
+        current = map_router.current_map(response)
         validation = validate_map(current["map_data"])
         self.assertTrue(validation.valid, validation.errors)
         self.assertEqual(current["status"], "published")
         self.assertTrue(validation.warnings)
+        cached = map_router.current_map(
+            Response(),
+            if_none_match=response.headers["etag"],
+        )
+        self.assertEqual(cached.status_code, 304)
 
     def test_closure_lifecycle(self):
         current = map_router.current_map(Response())

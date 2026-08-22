@@ -1,9 +1,12 @@
 import '../community/community_models.dart';
 import 'app_session.dart';
+import 'app_runtime_config.dart';
 import 'granmap_api.dart';
 import 'local_store.dart';
 
 class CommunityService {
+  static const _maxAutomaticAttempts = 8;
+
   final GranMapApi _api;
   final LocalStore _store;
   final AppSession _session;
@@ -22,6 +25,13 @@ class CommunityService {
     }
 
     final remaining = await _store.readCommunityQueue(_session.storageScope);
+    final pendingOperations = remaining
+        .where((item) => item['dead_letter'] != true)
+        .length;
+    final failedOperations = remaining
+        .where((item) => item['dead_letter'] == true)
+        .length;
+    final nextRetryAt = _nextRetryAt(remaining);
     try {
       final raw = await _api.fetchProposals(token: token);
       final server = raw
@@ -39,14 +49,18 @@ class CommunityService {
       return CommunitySnapshot(
         contributions: merged,
         isOffline: false,
-        pendingOperations: remaining.length,
+        pendingOperations: pendingOperations,
+        failedOperations: failedOperations,
+        nextRetryAt: nextRetryAt,
       );
     } catch (_) {
       final cached = await _store.readCachedProposals(scope);
       return CommunitySnapshot(
         contributions: cached,
         isOffline: true,
-        pendingOperations: remaining.length,
+        pendingOperations: pendingOperations,
+        failedOperations: failedOperations,
+        nextRetryAt: nextRetryAt,
       );
     }
   }
@@ -57,6 +71,12 @@ class CommunityService {
     required String toRoom,
     required String reason,
   }) async {
+    if (!AppRuntimeConfig.instance.communityWritesEnabled) {
+      throw const ApiException(
+        'Novas contribuições estão temporariamente pausadas.',
+        503,
+      );
+    }
     final token = _session.token;
     final user = _session.user;
     if (token == null || user == null) {
@@ -66,6 +86,7 @@ class CommunityService {
       );
     }
 
+    final idempotencyKey = _newIdempotencyKey('proposal');
     try {
       final raw = await _api.createProposal(
         token: token,
@@ -73,6 +94,7 @@ class CommunityService {
         fromRoom: fromRoom,
         toRoom: toRoom,
         reason: reason,
+        idempotencyKey: idempotencyKey,
       );
       final created = RoomChangeContribution.fromJson(raw);
       final cached = await _store.readCachedProposals(_session.storageScope);
@@ -89,6 +111,10 @@ class CommunityService {
     final operation = <String, dynamic>{
       'type': 'create',
       'local_id': localId,
+      'idempotency_key': idempotencyKey,
+      'attempts': 0,
+      'next_attempt_at': 0,
+      'dead_letter': false,
       'subject': subject,
       'from_room': fromRoom,
       'to_room': toRoom,
@@ -123,6 +149,9 @@ class CommunityService {
     required RoomChangeContribution contribution,
     required bool agrees,
   }) async {
+    if (!AppRuntimeConfig.instance.communityWritesEnabled) {
+      throw const ApiException('A votação está temporariamente pausada.', 503);
+    }
     final token = _session.token;
     if (token == null) {
       throw const ApiException(
@@ -138,11 +167,13 @@ class CommunityService {
       );
     }
 
+    final idempotencyKey = 'vote-${_session.user?.id ?? 'user'}-$proposalId';
     try {
       final raw = await _api.voteProposal(
         token: token,
         proposalId: proposalId,
         agrees: agrees,
+        idempotencyKey: idempotencyKey,
       );
       await _replaceCached(RoomChangeContribution.fromJson(raw));
       return;
@@ -156,7 +187,15 @@ class CommunityService {
           item['type'] == 'vote' &&
           item['proposal_id'].toString() == contribution.id,
     );
-    queue.add({'type': 'vote', 'proposal_id': proposalId, 'agrees': agrees});
+    queue.add({
+      'type': 'vote',
+      'proposal_id': proposalId,
+      'agrees': agrees,
+      'idempotency_key': idempotencyKey,
+      'attempts': 0,
+      'next_attempt_at': 0,
+      'dead_letter': false,
+    });
     await _store.saveCommunityQueue(_session.storageScope, queue);
     await _replaceCached(_optimisticVote(contribution, agrees));
   }
@@ -166,8 +205,14 @@ class CommunityService {
     if (queue.isEmpty) return;
 
     final retained = <Map<String, dynamic>>[];
-    for (var index = 0; index < queue.length; index++) {
-      final operation = queue[index];
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final queued in queue) {
+      final operation = Map<String, dynamic>.from(queued);
+      if (operation['dead_letter'] == true ||
+          ((operation['next_attempt_at'] as num?)?.toInt() ?? 0) > now) {
+        retained.add(operation);
+        continue;
+      }
       try {
         if (operation['type'] == 'create') {
           final raw = await _api.createProposal(
@@ -176,6 +221,7 @@ class CommunityService {
             fromRoom: operation['from_room'].toString(),
             toRoom: operation['to_room'].toString(),
             reason: operation['reason'].toString(),
+            idempotencyKey: operation['idempotency_key']?.toString(),
           );
           final created = RoomChangeContribution.fromJson(raw);
           final cached = await _store.readCachedProposals(
@@ -191,12 +237,30 @@ class CommunityService {
             token: token,
             proposalId: operation['proposal_id'] as int,
             agrees: operation['agrees'] as bool,
+            idempotencyKey: operation['idempotency_key']?.toString(),
           );
           await _replaceCached(RoomChangeContribution.fromJson(raw));
+        } else {
+          operation
+            ..['dead_letter'] = true
+            ..['last_error'] = 'Operação offline desconhecida.';
+          retained.add(operation);
         }
-      } catch (_) {
-        retained.addAll(queue.skip(index));
-        break;
+      } catch (error) {
+        final attempts = ((operation['attempts'] as num?)?.toInt() ?? 0) + 1;
+        final recoverableSession =
+            error is ApiException &&
+            (error.statusCode == 401 || error.statusCode == 403);
+        final retryable = _isRetriable(error) || recoverableSession;
+        final deadLetter = !retryable || attempts >= _maxAutomaticAttempts;
+        operation
+          ..['attempts'] = attempts
+          ..['last_error'] = _safeError(error)
+          ..['dead_letter'] = deadLetter
+          ..['next_attempt_at'] = deadLetter
+              ? 0
+              : now + _retryDelay(attempts, recoverableSession).inMilliseconds;
+        retained.add(operation);
       }
     }
     await _store.saveCommunityQueue(_session.storageScope, retained);
@@ -241,7 +305,36 @@ class CommunityService {
   }
 
   bool _isRetriable(Object error) {
-    return error is! ApiException || error.statusCode >= 500;
+    return error is! ApiException ||
+        error.statusCode == 0 ||
+        error.statusCode == 408 ||
+        error.statusCode == 429 ||
+        error.statusCode >= 500;
+  }
+
+  Duration _retryDelay(int attempts, bool waitingForSession) {
+    if (waitingForSession) return const Duration(minutes: 5);
+    final exponent = attempts.clamp(1, 6);
+    return Duration(seconds: 5 * (1 << (exponent - 1)));
+  }
+
+  DateTime? _nextRetryAt(List<Map<String, dynamic>> queue) {
+    final timestamps = queue
+        .where((item) => item['dead_letter'] != true)
+        .map((item) => (item['next_attempt_at'] as num?)?.toInt() ?? 0)
+        .where((value) => value > 0)
+        .toList();
+    if (timestamps.isEmpty) return null;
+    timestamps.sort();
+    return DateTime.fromMillisecondsSinceEpoch(timestamps.first);
+  }
+
+  String _newIdempotencyKey(String prefix) =>
+      '$prefix-${_session.user?.id ?? 'user'}-${DateTime.now().microsecondsSinceEpoch}';
+
+  String _safeError(Object error) {
+    final message = error is ApiException ? error.message : error.toString();
+    return message.length <= 240 ? message : message.substring(0, 240);
   }
 
   void dispose() => _api.dispose();

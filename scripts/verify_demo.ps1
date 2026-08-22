@@ -2,7 +2,7 @@ param(
     [string]$ApiBase = 'http://127.0.0.1:8100',
     [string]$AppUrl = 'http://127.0.0.1:8088',
     [string]$AdminUrl = 'http://127.0.0.1:5174',
-    [string]$ApkUrl = 'http://127.0.0.1:8090/GranMap-demo-v12-completa.apk'
+    [string]$ApkUrl = 'http://127.0.0.1:8090/GranMap-demo-v14-arm64.apk'
 )
 
 $ErrorActionPreference = 'Stop'

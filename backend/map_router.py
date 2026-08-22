@@ -84,7 +84,10 @@ def _map_row(row, include_data: bool = False):
 
 
 @router.get("/maps/current")
-def current_map(response: Response):
+def current_map(
+    response: Response,
+    if_none_match: str | None = Header(default=None, alias="If-None-Match"),
+):
     with connect() as con:
         row = con.execute(
             """
@@ -96,7 +99,13 @@ def current_map(response: Response):
         ).fetchone()
     if row is None:
         raise HTTPException(status_code=503, detail="Nenhum mapa publicado.")
-    response.headers["ETag"] = f'"{row["checksum"]}"'
+    etag = f'"{row["checksum"]}"'
+    if if_none_match == etag:
+        return Response(
+            status_code=304,
+            headers={"ETag": etag, "Cache-Control": "public, max-age=60"},
+        )
+    response.headers["ETag"] = etag
     response.headers["Cache-Control"] = "public, max-age=60"
     return _map_row(row, include_data=True)
 

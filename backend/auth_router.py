@@ -2,10 +2,11 @@ from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Literal
 
-from fastapi import APIRouter, Header, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from db import connect
+from email_service import send_password_reset
 from security import (
     LEGACY_PBKDF2_ITERATIONS,
     PASSWORD_ALGORITHM,
@@ -45,6 +46,24 @@ class ProfileUpdateIn(BaseModel):
     course_name: str = Field(min_length=2, max_length=160)
     semester: int = Field(ge=1, le=20)
     group_name: str = Field(min_length=1, max_length=60)
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=10, max_length=128)
+
+
+class AccountDeleteIn(BaseModel):
+    password: str = Field(min_length=1, max_length=128)
+
+
+class PasswordResetRequestIn(BaseModel):
+    email: str = Field(min_length=5, max_length=160)
+
+
+class PasswordResetConfirmIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)
+    new_password: str = Field(min_length=10, max_length=128)
 
 
 class HistoryIn(BaseModel):
@@ -124,6 +143,7 @@ def _require_user(authorization: str | None):
             JOIN users u ON u.id = s.user_id
             WHERE s.token_hash = ?
               AND s.revoked_at IS NULL
+              AND u.deleted_at IS NULL
             """,
             (token_hash,),
         ).fetchone()
@@ -212,6 +232,8 @@ def _authenticate(data: LoginIn):
 
     if row is None:
         raise HTTPException(status_code=401, detail="E-mail ou senha inválidos.")
+    if row["deleted_at"] is not None:
+        raise HTTPException(status_code=401, detail="E-mail ou senha inválidos.")
 
     verification = verify_password(
         data.password,
@@ -298,6 +320,103 @@ def login(data: LoginIn):
     return {"token": token, "user": _public_user(row)}
 
 
+@router.post("/auth/password-reset/request")
+def request_password_reset(
+    data: PasswordResetRequestIn,
+    background_tasks: BackgroundTasks,
+):
+    email = data.email.strip().lower()
+    raw_token = None
+    with connect() as con:
+        user = con.execute(
+            """
+            SELECT id, email FROM users
+            WHERE email = ? COLLATE NOCASE AND deleted_at IS NULL
+            """,
+            (email,),
+        ).fetchone()
+        if user is not None:
+            raw_token = secrets.token_urlsafe(32)
+            expires = _utc_now() + timedelta(minutes=30)
+            con.execute(
+                """
+                UPDATE account_tokens SET used_at = ?
+                WHERE user_id = ? AND purpose = 'password_reset' AND used_at IS NULL
+                """,
+                (_utc_now().isoformat(), user["id"]),
+            )
+            con.execute(
+                """
+                INSERT INTO account_tokens(user_id, token_hash, purpose, expires_at)
+                VALUES (?, ?, 'password_reset', ?)
+                """,
+                (user["id"], _token_hash(raw_token), expires.isoformat()),
+            )
+            con.commit()
+
+    settings = get_settings()
+    if raw_token is not None and settings.smtp_host and settings.smtp_from_email:
+        background_tasks.add_task(send_password_reset, email, raw_token)
+
+    result = {
+        "accepted": True,
+        "message": (
+            "Se o e-mail estiver cadastrado, enviaremos um código de recuperação."
+        ),
+    }
+    if raw_token is not None and not settings.is_production and not settings.smtp_host:
+        result["development_token"] = raw_token
+    return result
+
+
+@router.post("/auth/password-reset/confirm")
+def confirm_password_reset(data: PasswordResetConfirmIn):
+    token_hash = _token_hash(data.token.strip())
+    with connect() as con:
+        token = con.execute(
+            """
+            SELECT t.id, t.user_id
+            FROM account_tokens t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.token_hash = ?
+              AND t.purpose = 'password_reset'
+              AND t.used_at IS NULL
+              AND t.expires_at > ?
+              AND u.deleted_at IS NULL
+            """,
+            (token_hash, _utc_now().isoformat()),
+        ).fetchone()
+        if token is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Código inválido ou expirado.",
+            )
+        now = _utc_now().isoformat()
+        con.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, password_salt = '', password_algorithm = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (hash_password(data.new_password), PASSWORD_ALGORITHM, token["user_id"]),
+        )
+        con.execute(
+            "UPDATE account_tokens SET used_at = ? WHERE id = ?",
+            (now, token["id"]),
+        )
+        con.execute(
+            "UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL",
+            (now, token["user_id"]),
+        )
+        con.execute(
+            "INSERT INTO auth_events(user_id, event) VALUES (?, ?)",
+            (token["user_id"], "password.reset"),
+        )
+        con.commit()
+    return {"changed": True}
+
+
 @router.post("/auth/web-login")
 def web_login(data: LoginIn, response: Response):
     token, row = _authenticate(data)
@@ -375,6 +494,195 @@ def web_logout(
     result = logout(authorization)
     _clear_web_cookies(response)
     return result
+
+
+@router.get("/auth/sessions")
+def sessions(authorization: str | None = Header(default=None)):
+    user, _ = _require_user(authorization)
+    with connect() as con:
+        items = con.execute(
+            """
+            SELECT id, created_at, last_seen_at, expires_at
+            FROM sessions
+            WHERE user_id = ? AND revoked_at IS NULL AND expires_at > ?
+            ORDER BY created_at DESC, id DESC
+            """,
+            (user["id"], _utc_now().isoformat()),
+        ).fetchall()
+    return [
+        {
+            "id": item["id"],
+            "created_at": item["created_at"],
+            "last_seen_at": item["last_seen_at"],
+            "expires_at": item["expires_at"],
+            "current": item["id"] == user["session_id"],
+        }
+        for item in items
+    ]
+
+
+@router.delete("/auth/sessions/{session_id}")
+def revoke_session(
+    session_id: int,
+    authorization: str | None = Header(default=None),
+):
+    user, _ = _require_user(authorization)
+    with connect() as con:
+        cursor = con.execute(
+            """
+            UPDATE sessions SET revoked_at = ?
+            WHERE id = ? AND user_id = ? AND revoked_at IS NULL
+            """,
+            (_utc_now().isoformat(), session_id, user["id"]),
+        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Sessão não encontrada.")
+        con.commit()
+    return {"revoked": True, "current": session_id == user["session_id"]}
+
+
+@router.post("/auth/change-password")
+def change_password(
+    data: PasswordChangeIn,
+    authorization: str | None = Header(default=None),
+):
+    user, _ = _require_user(authorization)
+    verification = verify_password(
+        data.current_password,
+        user["password_hash"],
+        user["password_algorithm"],
+        user["password_salt"],
+    )
+    if not verification.valid:
+        raise HTTPException(status_code=401, detail="Senha atual incorreta.")
+    if data.current_password == data.new_password:
+        raise HTTPException(
+            status_code=400,
+            detail="A nova senha precisa ser diferente da atual.",
+        )
+
+    with connect() as con:
+        con.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, password_salt = '',
+                password_algorithm = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (hash_password(data.new_password), PASSWORD_ALGORITHM, user["id"]),
+        )
+        con.execute(
+            """
+            UPDATE sessions SET revoked_at = ?
+            WHERE user_id = ? AND id <> ? AND revoked_at IS NULL
+            """,
+            (_utc_now().isoformat(), user["id"], user["session_id"]),
+        )
+        con.execute(
+            "INSERT INTO auth_events(user_id, email, event) VALUES (?, ?, ?)",
+            (user["id"], user["email"], "password.changed"),
+        )
+        con.commit()
+    return {"changed": True, "other_sessions_revoked": True}
+
+
+@router.get("/auth/export")
+def export_account(authorization: str | None = Header(default=None)):
+    user, _ = _require_user(authorization)
+    user_id = user["id"]
+    with connect() as con:
+        favorites = con.execute(
+            "SELECT poi_id, created_at FROM user_favorites WHERE user_id = ?",
+            (user_id,),
+        ).fetchall()
+        history = con.execute(
+            """
+            SELECT poi_id, poi_name, visited_at
+            FROM navigation_history WHERE user_id = ?
+            ORDER BY visited_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+        proposals = con.execute(
+            """
+            SELECT id, subject, from_room, to_room, reason, status, created_at
+            FROM proposals WHERE author_user_id = ? ORDER BY created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+        votes = con.execute(
+            """
+            SELECT proposal_id, agrees, created_at
+            FROM votes WHERE voter_user_id = ? ORDER BY created_at DESC
+            """,
+            (user_id,),
+        ).fetchall()
+    return {
+        "exported_at": _utc_now().isoformat(),
+        "profile": _public_user(user),
+        "favorites": [dict(item) for item in favorites],
+        "navigation_history": [dict(item) for item in history],
+        "proposals": [dict(item) for item in proposals],
+        "votes": [dict(item) for item in votes],
+    }
+
+
+@router.delete("/auth/me", status_code=204)
+def delete_account(
+    data: AccountDeleteIn,
+    authorization: str | None = Header(default=None),
+):
+    user, _ = _require_user(authorization)
+    verification = verify_password(
+        data.password,
+        user["password_hash"],
+        user["password_algorithm"],
+        user["password_salt"],
+    )
+    if not verification.valid:
+        raise HTTPException(status_code=401, detail="Senha incorreta.")
+
+    deleted_at = _utc_now().isoformat()
+    anonymous_email = f"deleted+{user['id']}+{secrets.token_hex(6)}@invalid.local"
+    with connect() as con:
+        con.execute(
+            "UPDATE sessions SET revoked_at = ? WHERE user_id = ?",
+            (deleted_at, user["id"]),
+        )
+        con.execute("DELETE FROM user_favorites WHERE user_id = ?", (user["id"],))
+        con.execute("DELETE FROM navigation_history WHERE user_id = ?", (user["id"],))
+        con.execute("DELETE FROM notifications WHERE user_id = ?", (user["id"],))
+        con.execute(
+            "UPDATE proposals SET author_name = 'Usuário removido' WHERE author_user_id = ?",
+            (user["id"],),
+        )
+        con.execute(
+            "UPDATE votes SET voter_name = 'Usuário removido' WHERE voter_user_id = ?",
+            (user["id"],),
+        )
+        con.execute(
+            """
+            UPDATE users
+            SET name = 'Conta excluída', email = ?, password_hash = ?,
+                password_salt = '', password_algorithm = ?, course_name = '-',
+                semester = 1, group_name = '-', role = 'student', reputation = 0,
+                deleted_at = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                anonymous_email,
+                hash_password(secrets.token_urlsafe(48)),
+                PASSWORD_ALGORITHM,
+                deleted_at,
+                user["id"],
+            ),
+        )
+        con.execute(
+            "INSERT INTO auth_events(user_id, email, event) VALUES (?, '', ?)",
+            (user["id"], "account.deleted"),
+        )
+        con.commit()
+    return Response(status_code=204)
 
 
 @router.get("/me/schedule")

@@ -1,0 +1,79 @@
+name: granmap
+
+services:
+  database:
+    build:
+      context: .
+      dockerfile: deploy/coolify/Postgis.Dockerfile
+    environment:
+      POSTGRES_DB: granmap
+      POSTGRES_USER: granmap
+      POSTGRES_PASSWORD: ${GRANMAP_POSTGRES_PASSWORD:?Configure GRANMAP_POSTGRES_PASSWORD no Coolify}
+    volumes:
+      - granmap-postgres-data:/var/lib/postgresql/data
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U granmap -d granmap"]
+      interval: 8s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      GRANMAP_ENVIRONMENT: production
+      GRANMAP_DATABASE_URL: postgresql://granmap:${GRANMAP_POSTGRES_PASSWORD}@database:5432/granmap
+      GRANMAP_PUBLIC_ORIGINS: ${GRANMAP_PUBLIC_ORIGINS:-https://granmap.weblab.dev.br}
+      GRANMAP_COOKIE_SECURE: "true"
+      GRANMAP_TRUSTED_PROXY_HEADERS: "true"
+      GRANMAP_METRICS_ENABLED: "false"
+      GRANMAP_RUN_MIGRATIONS_ON_STARTUP: "true"
+      GRANMAP_ALLOW_REMOTE_DEMO_SEED: ${GRANMAP_ALLOW_REMOTE_DEMO_SEED:-true}
+      GRANMAP_DATABASE_POOL_SIZE: "2"
+      GRANMAP_DATABASE_MAX_OVERFLOW: "1"
+      GRANMAP_DATABASE_POOL_TIMEOUT_SECONDS: "10"
+      GRANMAP_DATABASE_POOL_RECYCLE_SECONDS: "300"
+      GRANMAP_MINIMUM_APP_BUILD: "5"
+      GRANMAP_LATEST_APP_BUILD: "6"
+      GRANMAP_COMMERCIAL_LAUNCH: "false"
+      GRANMAP_FEATURE_AR_ENABLED: "true"
+      GRANMAP_FEATURE_PHYSICAL_POSITIONING_ENABLED: "true"
+      GRANMAP_FEATURE_COMMUNITY_WRITES_ENABLED: "true"
+    depends_on:
+      database:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: admin_web
+      args:
+        VITE_GRANMAP_API_URL: /api
+    depends_on:
+      backend:
+        condition: service_healthy
+    expose:
+      - "8080"
+    # O servidor usa um proxy externo; esta porta fica acessível somente no
+    # host e deve ser encaminhada por HTTPS para granmap.weblab.dev.br.
+    ports:
+      - "127.0.0.1:${GRANMAP_HOST_PORT:-18180}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 4s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  granmap-postgres-data:

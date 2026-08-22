@@ -64,7 +64,8 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'student',
     reputation INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -109,7 +110,8 @@ CREATE TABLE IF NOT EXISTS proposals (
     applied_at TIMESTAMPTZ,
     applied_schedule_id BIGINT REFERENCES schedules(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    idempotency_key TEXT
 );
 
 CREATE TABLE IF NOT EXISTS votes (
@@ -211,10 +213,28 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+    key TEXT PRIMARY KEY,
+    window_start BIGINT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS account_tokens (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    purpose TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
 CREATE INDEX IF NOT EXISTS idx_sessions_user_active ON sessions(user_id, expires_at, revoked_at);
 CREATE INDEX IF NOT EXISTS idx_history_user_time ON navigation_history(user_id, visited_at DESC);
 CREATE INDEX IF NOT EXISTS idx_proposals_status_created ON proposals(status, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_author_idempotency ON proposals(author_user_id, idempotency_key) WHERE author_user_id IS NOT NULL AND idempotency_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_votes_proposal ON votes(proposal_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_votes_proposal_user ON votes(proposal_id, voter_user_id) WHERE voter_user_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_schedules_room_time ON schedules(weekday, room_id, start_time, end_time);
@@ -228,6 +248,7 @@ CREATE INDEX IF NOT EXISTS idx_fingerprints_floor ON magnetic_fingerprints(floor
 CREATE INDEX IF NOT EXISTS idx_auth_events_email_time ON auth_events(email, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_time ON notifications(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_unread ON notifications(user_id, read_at, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_account_tokens_lookup ON account_tokens(token_hash, purpose, expires_at, used_at);
 CREATE INDEX IF NOT EXISTS idx_rooms_geom ON rooms USING GIST(geom);
 CREATE INDEX IF NOT EXISTS idx_anchors_geom ON positioning_anchors USING GIST(geom);
 CREATE INDEX IF NOT EXISTS idx_fingerprints_geom ON magnetic_fingerprints USING GIST(geom);

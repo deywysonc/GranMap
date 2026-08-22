@@ -13,6 +13,7 @@ físicos fictícios para preencher essas lacunas.
 | Conteúdo 360° | Comunicação/privacidade | panoramas autorizados, sem rostos/documentos |
 | SSO e ERP | TI institucional | issuer/client e contrato da API acadêmica |
 | Push | TI do produto | projeto FCM/APNs e credenciais protegidas |
+| E-mail transacional | TI do produto | SMTP/API validado para recuperação de senha |
 | Loja | Instituição | contas, chave Android definitiva e certificados Apple |
 | Produção | DevOps | domínio, TLS, PostgreSQL, backup testado e alertas |
 

@@ -62,6 +62,27 @@ class LocalStore {
     await _remove(_userKey);
   }
 
+  Future<void> saveRuntimeConfig(Map<String, dynamic> config) async {
+    await _write(
+      'granmap.runtime.config',
+      jsonEncode({
+        'cached_at': DateTime.now().toIso8601String(),
+        'config': config,
+      }),
+    );
+  }
+
+  Future<Map<String, dynamic>?> readRuntimeConfig() async {
+    final raw = await _read('granmap.runtime.config');
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded['config'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> savePublishedMap(Map<String, dynamic> publication) async {
     await _write('granmap.map.published', jsonEncode(publication));
   }

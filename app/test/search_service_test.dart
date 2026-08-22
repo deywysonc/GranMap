@@ -31,4 +31,33 @@ void main() {
     expect(result.length, 1);
     expect(result.first.name, 'Sala 202');
   });
+
+  test('Busca tolera erro de digitação e entende sinônimos', () {
+    const pois = [
+      CampusPoi(
+        id: 'biblioteca',
+        name: 'Biblioteca',
+        type: 'library',
+        floor: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+        navigationNode: 'n1',
+      ),
+      CampusPoi(
+        id: 'banheiros',
+        name: 'Banheiros',
+        type: 'restroom',
+        floor: 0,
+        x: 0,
+        y: 0,
+        z: 0,
+        navigationNode: 'n2',
+      ),
+    ];
+
+    final service = const SearchService();
+    expect(service.search(pois, 'bibliotca').first.id, 'biblioteca');
+    expect(service.search(pois, 'sanitario').first.id, 'banheiros');
+  });
 }

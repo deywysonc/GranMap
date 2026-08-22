@@ -205,6 +205,7 @@ class _TrustCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final offline = snapshot?.isOffline ?? !session.backendReachable;
     final pending = snapshot?.pendingOperations ?? 0;
+    final failed = snapshot?.failedOperations ?? 0;
     return GranMapSurface(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -259,6 +260,12 @@ class _TrustCard extends StatelessWidget {
                   label: '$pending pendente${pending == 1 ? '' : 's'}',
                   icon: Icons.sync_rounded,
                   color: GranMapColors.coral,
+                ),
+              if (failed > 0)
+                GranMapStatusPill(
+                  label: '$failed precisa${failed == 1 ? '' : 'm'} de atenção',
+                  icon: Icons.sync_problem_rounded,
+                  color: GranMapColors.danger,
                 ),
               if (session.user != null)
                 GranMapStatusPill(

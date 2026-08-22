@@ -58,6 +58,8 @@ class IntegrationReadinessTest(unittest.TestCase):
             erp_api_token="secret",
             push_provider="fcm",
             push_credentials_configured=True,
+            smtp_host="smtp.granmap.example",
+            smtp_from_email="nao-responda@granmap.example",
         )
         settings.validate_production()
 

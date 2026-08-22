@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../models/campus_map.dart';
 import '../models/personal_data.dart';
 import '../services/app_session.dart';
+import '../services/app_preferences.dart';
 import '../services/personal_data_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'academic_screen.dart';
+import 'account_security_screen.dart';
 import 'developer_screen.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
@@ -25,19 +27,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _personal = PersonalDataService();
   List<String> _favorites = const [];
   List<NavigationHistoryItem> _history = const [];
-  bool _locationEnabled = true;
-  bool _highContrast = false;
-
   @override
   void initState() {
     super.initState();
     AppSession.instance.addListener(_sessionChanged);
+    AppPreferences.instance.addListener(_preferencesChanged);
     _load();
   }
 
   @override
   void dispose() {
     AppSession.instance.removeListener(_sessionChanged);
+    AppPreferences.instance.removeListener(_preferencesChanged);
     _personal.dispose();
     super.dispose();
   }
@@ -46,6 +47,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     setState(() {});
     _load();
+  }
+
+  void _preferencesChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
@@ -63,6 +68,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final session = AppSession.instance;
+    final preferences = AppPreferences.instance;
     final user = session.user;
     return RefreshIndicator(
       onRefresh: () async {
@@ -160,6 +166,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                         const SizedBox(height: 22),
+                        const _SectionLabel('CONTA'),
+                        const SizedBox(height: 9),
+                        _SettingsGroup(
+                          children: [
+                            _SettingsRow(
+                              icon: Icons.shield_outlined,
+                              title: 'Conta e segurança',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AccountSecurityScreen(),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 22),
                         const _SectionLabel('MAPA'),
                         const SizedBox(height: 9),
                         _SettingsGroup(
@@ -181,10 +203,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               icon: Icons.near_me_outlined,
                               title: 'Permissões de localização',
                               trailing: Switch(
-                                value: _locationEnabled,
+                                value: preferences.locationEnabled,
                                 activeTrackColor: GranMapColors.orange,
-                                onChanged: (value) =>
-                                    setState(() => _locationEnabled = value),
+                                onChanged: preferences.setLocationEnabled,
                               ),
                             ),
                           ],
@@ -194,19 +215,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         const SizedBox(height: 9),
                         _SettingsGroup(
                           children: [
+                            _SettingsRow(
+                              icon: Icons.accessible_forward_rounded,
+                              title: 'Preferir rotas acessíveis',
+                              trailing: Switch(
+                                value: preferences.accessibleRoutes,
+                                activeTrackColor: GranMapColors.orange,
+                                onChanged: preferences.setAccessibleRoutes,
+                              ),
+                            ),
                             const _SettingsRow(
                               icon: Icons.dark_mode_outlined,
-                              title: 'Modo escuro',
-                              trailing: Switch(value: true, onChanged: null),
+                              title: 'Tema visual',
+                              value: 'Escuro',
                             ),
                             _SettingsRow(
                               icon: Icons.contrast_rounded,
                               title: 'Contraste alto',
                               trailing: Switch(
-                                value: _highContrast,
+                                value: preferences.highContrast,
                                 activeTrackColor: GranMapColors.orange,
-                                onChanged: (value) =>
-                                    setState(() => _highContrast = value),
+                                onChanged: preferences.setHighContrast,
                               ),
                             ),
                             _SettingsRow(

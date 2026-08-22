@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL DEFAULT 'student',
     reputation INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -133,6 +134,7 @@ CREATE TABLE IF NOT EXISTS proposals (
     resolved_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    idempotency_key TEXT,
     FOREIGN KEY(author_user_id) REFERENCES users(id),
     FOREIGN KEY(resolved_by_user_id) REFERENCES users(id)
 );
@@ -243,12 +245,31 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+    key TEXT PRIMARY KEY,
+    window_start INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS account_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
+    purpose TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 """
 
 
 @contextmanager
 def connect():
-    database_url = get_settings().database_url
+    settings = get_settings()
+    database_url = settings.database_url
     if database_url:
         from sqlalchemy import create_engine, text
 
@@ -257,7 +278,14 @@ def connect():
         url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
         engine = _POSTGRES_ENGINES.get(url)
         if engine is None:
-            engine = create_engine(url, pool_pre_ping=True)
+            engine = create_engine(
+                url,
+                pool_pre_ping=True,
+                pool_size=settings.database_pool_size,
+                max_overflow=settings.database_max_overflow,
+                pool_timeout=settings.database_pool_timeout_seconds,
+                pool_recycle=settings.database_pool_recycle_seconds,
+            )
             _POSTGRES_ENGINES[url] = engine
         connection = engine.connect()
         compat = PostgresCompatConnection(connection, text)
@@ -306,6 +334,7 @@ def migrate_schema(connection: sqlite3.Connection):
     _add_column_if_missing(
         connection, "users", "reputation", "INTEGER NOT NULL DEFAULT 0"
     )
+    _add_column_if_missing(connection, "users", "deleted_at", "TEXT")
     _add_column_if_missing(
         connection,
         "users",
@@ -339,6 +368,7 @@ def migrate_schema(connection: sqlite3.Connection):
     _add_column_if_missing(connection, "proposals", "resolved_at", "TEXT")
     _add_column_if_missing(connection, "proposals", "applied_at", "TEXT")
     _add_column_if_missing(connection, "proposals", "applied_schedule_id", "INTEGER")
+    _add_column_if_missing(connection, "proposals", "idempotency_key", "TEXT")
     _add_column_if_missing(
         connection,
         "proposals",
@@ -362,6 +392,10 @@ def migrate_schema(connection: sqlite3.Connection):
 
         CREATE INDEX IF NOT EXISTS idx_proposals_status_created
         ON proposals(status, created_at DESC);
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_author_idempotency
+        ON proposals(author_user_id, idempotency_key)
+        WHERE author_user_id IS NOT NULL AND idempotency_key IS NOT NULL;
 
         CREATE INDEX IF NOT EXISTS idx_votes_proposal
         ON votes(proposal_id);
@@ -405,6 +439,27 @@ def migrate_schema(connection: sqlite3.Connection):
 
         CREATE INDEX IF NOT EXISTS idx_notifications_unread
         ON notifications(user_id, read_at, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS rate_limit_buckets (
+            key TEXT PRIMARY KEY,
+            window_start INTEGER NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS account_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            purpose TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used_at TEXT,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_account_tokens_lookup
+        ON account_tokens(token_hash, purpose, expires_at, used_at);
         """
     )
 

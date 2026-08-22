@@ -5,6 +5,7 @@ import '../services/granmap_api.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'register_screen.dart';
+import 'password_reset_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -115,6 +116,20 @@ class _LoginScreenState extends State<LoginScreen> {
                                         : Icons.visibility_off_outlined,
                                   ),
                                 ),
+                              ),
+                            ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _loading
+                                    ? null
+                                    : () => Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const PasswordResetScreen(),
+                                        ),
+                                      ),
+                                child: const Text('Esqueci minha senha'),
                               ),
                             ),
                             AnimatedSize(

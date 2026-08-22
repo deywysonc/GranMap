@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/campus_map.dart';
 import '../navigation/navigation_service.dart';
 import '../navigation/navigation_session.dart';
 import '../navigation/route_result.dart';
+import '../services/app_preferences.dart';
+import '../services/app_runtime_config.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_lens_canvas.dart';
 import '../widgets/campus_map_canvas.dart';
@@ -33,8 +36,9 @@ class _RouteScreenState extends State<RouteScreen> {
   final _navigation = const NavigationService();
   RouteResult? _route;
   NavigationSession? _session;
-  bool _accessibleOnly = false;
+  bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
   int _view = 0;
+  int _lastFeedbackSegment = -1;
 
   @override
   void initState() {
@@ -66,7 +70,28 @@ class _RouteScreenState extends State<RouteScreen> {
   }
 
   void _changed() {
+    final session = _session;
+    if (session != null && session.segmentIndex != _lastFeedbackSegment) {
+      _lastFeedbackSegment = session.segmentIndex;
+      if (session.hasArrived) {
+        HapticFeedback.heavyImpact();
+      } else if (session.status == NavigationSessionStatus.navigating) {
+        HapticFeedback.selectionClick();
+      }
+    }
     if (mounted) setState(() {});
+  }
+
+  void _selectRouteView(int value) {
+    if (value == 3 && !AppRuntimeConfig.instance.arEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('O modo AR está temporariamente indisponível.'),
+        ),
+      );
+      return;
+    }
+    setState(() => _view = value);
   }
 
   @override
@@ -179,7 +204,7 @@ class _RouteScreenState extends State<RouteScreen> {
             top: 12,
             child: _RouteViewSelector(
               selected: _view,
-              onSelected: (value) => setState(() => _view = value),
+              onSelected: _selectRouteView,
             ),
           ),
           Positioned(
@@ -297,6 +322,7 @@ class _RouteScreenState extends State<RouteScreen> {
                     _accessibleOnly = value;
                     _configure();
                   });
+                  AppPreferences.instance.setAccessibleRoutes(value);
                 },
               ),
               const SizedBox(height: 8),
@@ -336,78 +362,86 @@ class _InstructionBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final instruction = session.currentInstruction;
     final arrived = session.hasArrived;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xF20A1728),
-        borderRadius: BorderRadius.circular(17),
-        border: Border.all(
-          color: arrived
-              ? GranMapColors.mint.withValues(alpha: .35)
-              : GranMapColors.orange.withValues(alpha: .26),
+    return Semantics(
+      liveRegion: true,
+      label: arrived
+          ? 'Você chegou ao destino.'
+          : '${instruction.title}. ${instruction.detail}',
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xF20A1728),
+          borderRadius: BorderRadius.circular(17),
+          border: Border.all(
+            color: arrived
+                ? GranMapColors.mint.withValues(alpha: .35)
+                : GranMapColors.orange.withValues(alpha: .26),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x66000000),
+              blurRadius: 20,
+              offset: Offset(0, 8),
+            ),
+          ],
         ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x66000000),
-            blurRadius: 20,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: (arrived ? GranMapColors.mint : GranMapColors.orange)
-                  .withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(13),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: (arrived ? GranMapColors.mint : GranMapColors.orange)
+                    .withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                arrived
+                    ? Icons.flag_rounded
+                    : _instructionIcon(instruction.type),
+                color: arrived ? GranMapColors.mint : GranMapColors.orange,
+              ),
             ),
-            child: Icon(
-              arrived ? Icons.flag_rounded : _instructionIcon(instruction.type),
-              color: arrived ? GranMapColors.mint : GranMapColors.orange,
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    arrived ? 'Você chegou' : instruction.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  Text(
+                    instruction.detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: GranMapColors.textMuted),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  arrived ? 'Você chegou' : instruction.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                Text(
-                  instruction.detail,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: GranMapColors.textMuted),
-                ),
-              ],
-            ),
-          ),
-          if (!arrived)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  _duration(session.demoRemainingDuration),
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                Text(
-                  session.remainingUnits == 0
-                      ? 'destino'
-                      : '${session.remainingUnits.ceil()} u',
-                  style: Theme.of(context).textTheme.labelSmall
-                      ?.copyWith(color: GranMapColors.textMuted),
-                ),
-              ],
-            ),
-        ],
+            if (!arrived)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    _duration(session.demoRemainingDuration),
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
+                  Text(
+                    session.remainingUnits == 0
+                        ? 'destino'
+                        : '${session.remainingUnits.ceil()} u',
+                    style: Theme.of(context).textTheme.labelSmall
+                        ?.copyWith(color: GranMapColors.textMuted),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }

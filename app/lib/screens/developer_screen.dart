@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:flutter/services.dart';
 
 import '../models/campus_map.dart';
 import '../positioning/device_sensor_service.dart';
@@ -9,6 +10,7 @@ import '../positioning/sensor_service.dart';
 import '../positioning/sensor_snapshot.dart';
 import '../positioning/simulation_sensor_service.dart';
 import '../services/app_session.dart';
+import '../services/app_diagnostics.dart';
 import '../services/granmap_api.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
@@ -189,7 +191,16 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
     final metadata = widget.campus.metadata;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Diagnóstico técnico')),
+      appBar: AppBar(
+        title: const Text('Diagnóstico técnico'),
+        actions: [
+          IconButton(
+            tooltip: 'Copiar relatório seguro',
+            onPressed: _copyDiagnosticReport,
+            icon: const Icon(Icons.content_copy_rounded),
+          ),
+        ],
+      ),
       body: GranMapBackdrop(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 36),
@@ -615,6 +626,25 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _copyDiagnosticReport() async {
+    final report = AppDiagnostics.instance.exportReport(
+      context: {
+        'session': AppSession.instance.exportDebugSession(),
+        'map_nodes': widget.campus.nodes.length,
+        'map_edges': widget.campus.edges.length,
+        'sensor_source': _usingDevice ? 'physical' : 'simulation',
+      },
+    );
+    await Clipboard.setData(ClipboardData(text: report));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Relatório copiado sem senha ou token de acesso.'),
+        ),
+      );
+    }
   }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/campus_map.dart';
 import '../navigation/navigation_service.dart';
@@ -11,6 +12,8 @@ import '../positioning/gps_entrance_service.dart';
 import '../positioning/pdr_positioning_service.dart';
 import '../positioning/position_sample.dart';
 import '../services/granmap_api.dart';
+import '../services/app_preferences.dart';
+import '../services/app_runtime_config.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_lens_canvas.dart';
 import '../widgets/campus_map_canvas.dart';
@@ -52,8 +55,9 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
   String? _positioningNotice;
   bool _realPositioning = false;
   bool _positioningBusy = false;
-  bool _accessibleOnly = false;
+  bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
   int _routeView = 0;
+  int _lastFeedbackSegment = -1;
 
   @override
   void initState() {
@@ -133,10 +137,20 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       a.length == b.length && a.every(b.contains);
 
   void _onSessionChanged() {
+    final session = _session;
+    if (session != null && session.segmentIndex != _lastFeedbackSegment) {
+      _lastFeedbackSegment = session.segmentIndex;
+      if (session.hasArrived) {
+        HapticFeedback.heavyImpact();
+      } else if (session.status == NavigationSessionStatus.navigating) {
+        HapticFeedback.selectionClick();
+      }
+    }
     if (mounted) setState(() {});
   }
 
   void _setAccessible(bool value) {
+    AppPreferences.instance.setAccessibleRoutes(value);
     setState(() {
       _accessibleOnly = value;
       _configureRoute();
@@ -151,8 +165,33 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
     session.setPlaybackSpeed(speeds[(current + 1) % speeds.length]);
   }
 
+  void _setRouteView(int value) {
+    if (value == 3 && !AppRuntimeConfig.instance.arEnabled) {
+      setState(() {
+        _positioningNotice =
+            'O modo AR foi pausado remotamente para preservar a estabilidade.';
+      });
+      return;
+    }
+    setState(() => _routeView = value);
+  }
+
   Future<void> _toggleRealPositioning() async {
     if (_positioningBusy) return;
+    if (!_realPositioning &&
+        !AppRuntimeConfig.instance.physicalPositioningEnabled) {
+      setState(() {
+        _positioningNotice =
+            'O posicionamento físico está temporariamente indisponível.';
+      });
+      return;
+    }
+    if (!_realPositioning && !AppPreferences.instance.locationEnabled) {
+      setState(() {
+        _positioningNotice = 'Ative “Permissões de localização” no Perfil antes de usar sensores físicos.';
+      });
+      return;
+    }
     setState(() => _positioningBusy = true);
     if (_realPositioning) {
       await _physicalPositionSubscription?.cancel();
@@ -508,10 +547,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                           ],
                                           selected: {_routeView},
                                           onSelectionChanged: (selection) {
-                                            setState(
-                                              () =>
-                                                  _routeView = selection.first,
-                                            );
+                                            _setRouteView(selection.first);
                                           },
                                         ),
                                       ),

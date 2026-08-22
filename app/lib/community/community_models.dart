@@ -116,10 +116,14 @@ class CommunitySnapshot {
   final List<RoomChangeContribution> contributions;
   final bool isOffline;
   final int pendingOperations;
+  final int failedOperations;
+  final DateTime? nextRetryAt;
 
   const CommunitySnapshot({
     required this.contributions,
     required this.isOffline,
     required this.pendingOperations,
+    this.failedOperations = 0,
+    this.nextRetryAt,
   });
 }

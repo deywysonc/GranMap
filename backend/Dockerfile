@@ -17,4 +17,4 @@ RUN addgroup --system granmap && adduser --system --ingroup granmap granmap \
 USER granmap
 
 EXPOSE 8000
-CMD ["sh", "-c", "alembic upgrade head && if [ \"${GRANMAP_ALLOW_REMOTE_DEMO_SEED:-false}\" = \"true\" ]; then python seed_demo.py; fi && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]
+CMD ["sh", "-c", "if [ \"${GRANMAP_RUN_MIGRATIONS_ON_STARTUP:-true}\" = \"true\" ]; then alembic upgrade head; fi && if [ \"${GRANMAP_ALLOW_REMOTE_DEMO_SEED:-false}\" = \"true\" ]; then python seed_demo.py; fi && exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers"]

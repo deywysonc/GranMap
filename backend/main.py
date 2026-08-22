@@ -31,7 +31,7 @@ from settings import get_settings
 ADMIN_ROLES = {"coordination", "admin"}
 MODERATION_ROLES = {"moderator", "coordination", "admin"}
 USER_ADMIN_ROLES = {"admin"}
-APP_VERSION = "0.11.0"
+APP_VERSION = "0.12.0"
 
 
 @asynccontextmanager
@@ -281,6 +281,21 @@ def health():
         "service": "granmap-api",
         "version": APP_VERSION,
         "environment": settings.environment,
+    }
+
+
+@app.get("/app-config")
+def app_config():
+    return {
+        "schema_version": 1,
+        "minimum_app_build": settings.minimum_app_build,
+        "latest_app_build": settings.latest_app_build,
+        "maintenance_mode": settings.maintenance_mode,
+        "features": {
+            "ar": settings.feature_ar_enabled,
+            "physical_positioning": settings.feature_physical_positioning_enabled,
+            "community_writes": settings.feature_community_writes_enabled,
+        },
     }
 
 
@@ -878,15 +893,38 @@ def list_proposals(authorization: str | None = Header(default=None)):
 def create_proposal(
     data: ProposalIn,
     authorization: str | None = Header(default=None),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
 ):
     user, _ = require_user(authorization)
+    if not isinstance(idempotency_key, str):
+        idempotency_key = None
+    if idempotency_key:
+        idempotency_key = idempotency_key.strip()
+        if len(idempotency_key) > 120 or not all(
+            character.isalnum() or character in "-_.:"
+            for character in idempotency_key
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Chave de idempotência inválida.",
+            )
     with connect() as con:
+        if idempotency_key:
+            existing = con.execute(
+                """
+                SELECT id FROM proposals
+                WHERE author_user_id = ? AND idempotency_key = ?
+                """,
+                (user["id"], idempotency_key),
+            ).fetchone()
+            if existing is not None:
+                return _proposal_with_votes(existing["id"], user["id"])
         cursor = con.execute(
             """
             INSERT INTO proposals(
                 author_name, author_user_id, subject,
-                from_room, to_room, reason, status
-            ) VALUES (?, ?, ?, ?, ?, ?, 'unverified')
+                from_room, to_room, reason, status, idempotency_key
+            ) VALUES (?, ?, ?, ?, ?, ?, 'unverified', ?)
             """,
             (
                 user["name"],
@@ -895,6 +933,7 @@ def create_proposal(
                 data.from_room.strip(),
                 data.to_room.strip(),
                 data.reason.strip(),
+                idempotency_key,
             ),
         )
         item_id = cursor.lastrowid

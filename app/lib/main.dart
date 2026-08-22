@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 
 import 'data/campus_map_repository.dart';
 import 'screens/granmap_shell.dart';
+import 'screens/onboarding_screen.dart';
+import 'screens/availability_screen.dart';
+import 'services/app_preferences.dart';
+import 'services/app_diagnostics.dart';
+import 'services/app_runtime_config.dart';
 import 'services/app_session.dart';
 import 'theme/granmap_theme.dart';
 import 'widgets/granmap_ui.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  AppDiagnostics.instance.install();
   runApp(const GranMapApp());
 }
 
@@ -16,13 +22,18 @@ class GranMapApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'GranMap',
-      debugShowCheckedModeBanner: false,
-      theme: GranMapTheme.light,
-      darkTheme: GranMapTheme.dark,
-      themeMode: ThemeMode.dark,
-      home: const GranMapBootstrap(),
+    return AnimatedBuilder(
+      animation: AppPreferences.instance,
+      builder: (context, _) => MaterialApp(
+        title: 'GranMap',
+        debugShowCheckedModeBanner: false,
+        theme: GranMapTheme.dark,
+        darkTheme: AppPreferences.instance.highContrast
+            ? GranMapTheme.highContrastDark
+            : GranMapTheme.dark,
+        themeMode: ThemeMode.dark,
+        home: const GranMapBootstrap(),
+      ),
     );
   }
 }
@@ -36,7 +47,7 @@ class GranMapBootstrap extends StatefulWidget {
 
 class _GranMapBootstrapState extends State<GranMapBootstrap> {
   final CampusMapRepository _repository = CampusMapRepository();
-  late final Future<CampusMapSnapshot> _campusFuture;
+  late Future<CampusMapSnapshot> _campusFuture;
 
   @override
   void initState() {
@@ -45,8 +56,16 @@ class _GranMapBootstrapState extends State<GranMapBootstrap> {
   }
 
   Future<CampusMapSnapshot> _initializeApp() async {
-    await AppSession.instance.initialize();
+    await Future.wait([
+      AppPreferences.instance.initialize(),
+      AppSession.instance.initialize(),
+      AppRuntimeConfig.instance.initialize(),
+    ]);
     return _repository.loadCampus();
+  }
+
+  void _retryInitialization() {
+    setState(() => _campusFuture = _initializeApp());
   }
 
   @override
@@ -64,10 +83,21 @@ class _GranMapBootstrapState extends State<GranMapBootstrap> {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
-                  child: GranMapEmptyState(
-                    icon: Icons.map_outlined,
-                    title: 'O mapa não pôde ser aberto',
-                    message: '${snapshot.error ?? 'Tente novamente.'}',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      GranMapEmptyState(
+                        icon: Icons.map_outlined,
+                        title: 'O mapa não pôde ser aberto',
+                        message: '${snapshot.error ?? 'Tente novamente.'}',
+                      ),
+                      const SizedBox(height: 14),
+                      OutlinedButton.icon(
+                        onPressed: _retryInitialization,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Tentar novamente'),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -76,11 +106,23 @@ class _GranMapBootstrapState extends State<GranMapBootstrap> {
         }
 
         final data = snapshot.data!;
+        if (AppRuntimeConfig.instance.maintenanceMode ||
+            AppRuntimeConfig.instance.requiresUpdate) {
+          return AvailabilityScreen(
+            maintenance: AppRuntimeConfig.instance.maintenanceMode,
+            onAvailable: () => setState(() {}),
+          );
+        }
+        if (!AppPreferences.instance.onboardingCompleted) {
+          return OnboardingScreen(onCompleted: () => setState(() {}));
+        }
         return GranMapShell(
           campus: data.campus,
           blockedEdgeIds: data.blockedEdgeIds,
           mapVersion: data.version,
           mapSource: data.source,
+          mapUpdatedAt: data.updatedAt,
+          mapWarning: data.warning,
         );
       },
     );

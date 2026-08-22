@@ -16,24 +16,28 @@ $npm = (Get-Command npm.cmd -ErrorAction Stop).Source
 $flutter = (Get-Command flutter -ErrorAction Stop).Source
 
 function Get-LanIPv4 {
-    $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue |
-        Where-Object { $_.NextHop -ne '0.0.0.0' } |
-        Sort-Object RouteMetric |
+    $addresses = Get-NetIPConfiguration -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.NetAdapter.Status -eq 'Up' -and
+            $null -ne $_.IPv4DefaultGateway
+        } |
+        ForEach-Object { $_.IPv4Address.IPAddress } |
+        Where-Object {
+            $_ -notlike '169.254.*' -and $_ -ne '127.0.0.1'
+        }
+
+    # Prefere a rede local real a túneis/VPNs, como Hamachi.
+    $address = $addresses |
+        Where-Object {
+            $_ -like '10.*' -or
+            $_ -like '192.168.*' -or
+            $_ -match '^172\.(1[6-9]|2[0-9]|3[01])\.'
+        } |
         Select-Object -First 1
 
-    if ($null -eq $route) {
-        throw 'Não foi possível detectar a rota de rede local.'
+    if ([string]::IsNullOrWhiteSpace($address)) {
+        $address = $addresses | Select-Object -First 1
     }
-
-    $address = Get-NetIPAddress `
-        -InterfaceIndex $route.InterfaceIndex `
-        -AddressFamily IPv4 `
-        -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.IPAddress -notlike '169.254.*' -and
-            $_.IPAddress -ne '127.0.0.1'
-        } |
-        Select-Object -First 1 -ExpandProperty IPAddress
 
     if ([string]::IsNullOrWhiteSpace($address)) {
         throw 'Não foi possível detectar o IPv4 da rede local.'
@@ -47,7 +51,7 @@ $accessHost = if ($Lan) { Get-LanIPv4 } else { '127.0.0.1' }
 $apiUrl = "http://${accessHost}:8100"
 $adminUrl = "http://${accessHost}:5174"
 $appUrl = "http://${accessHost}:8088"
-$apkName = 'GranMap-demo-v12-completa.apk'
+$apkName = 'GranMap-demo-v14-arm64.apk'
 $apkPath = Join-Path $distRoot $apkName
 $apkUrl = "http://${accessHost}:8090/$apkName"
 
@@ -108,9 +112,7 @@ if (Test-Path -LiteralPath $pidFile) {
 if (-not (Test-LocalPort -Port 8100)) {
     $backendEnvironment = @{ GRANMAP_DB_PATH = $demoDb }
     if ($Lan) {
-        $backendEnvironment.GRANMAP_PUBLIC_ORIGINS = ConvertTo-Json `
-            -InputObject @($adminUrl, $appUrl) `
-            -Compress
+        $backendEnvironment.GRANMAP_PUBLIC_ORIGINS = "$adminUrl,$appUrl"
     }
 
     $backendProcess = Start-Process `

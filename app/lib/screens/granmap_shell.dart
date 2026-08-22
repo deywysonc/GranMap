@@ -15,6 +15,8 @@ class GranMapShell extends StatefulWidget {
   final Set<String> blockedEdgeIds;
   final String mapVersion;
   final CampusMapSource mapSource;
+  final DateTime? mapUpdatedAt;
+  final String? mapWarning;
 
   const GranMapShell({
     super.key,
@@ -22,6 +24,8 @@ class GranMapShell extends StatefulWidget {
     required this.blockedEdgeIds,
     required this.mapVersion,
     required this.mapSource,
+    this.mapUpdatedAt,
+    this.mapWarning,
   });
 
   @override
@@ -63,7 +67,20 @@ class _GranMapShellState extends State<GranMapShell> {
       body: GranMapBackdrop(
         child: SafeArea(
           bottom: false,
-          child: IndexedStack(index: _index, children: pages),
+          child: Column(
+            children: [
+              if (widget.mapSource == CampusMapSource.cache ||
+                  widget.mapSource == CampusMapSource.bundled)
+                _MapFreshnessBanner(
+                  source: widget.mapSource,
+                  updatedAt: widget.mapUpdatedAt,
+                  warning: widget.mapWarning,
+                ),
+              Expanded(
+                child: IndexedStack(index: _index, children: pages),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: _GranMapBottomBar(
@@ -72,6 +89,56 @@ class _GranMapShellState extends State<GranMapShell> {
         onSelected: _select,
       ),
     );
+  }
+}
+
+class _MapFreshnessBanner extends StatelessWidget {
+  final CampusMapSource source;
+  final DateTime? updatedAt;
+  final String? warning;
+
+  const _MapFreshnessBanner({
+    required this.source,
+    required this.updatedAt,
+    required this.warning,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bundled = source == CampusMapSource.bundled;
+    final text =
+        warning ??
+        (bundled
+            ? 'Mapa offline incluído no aplicativo.'
+            : 'Mapa salvo em ${_format(updatedAt)}.');
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+        color: (bundled ? GranMapColors.violet : GranMapColors.amber)
+            .withValues(alpha: .12),
+        child: Row(
+          children: [
+            Icon(
+              bundled ? Icons.offline_bolt_rounded : Icons.cloud_off_rounded,
+              size: 17,
+              color: bundled ? GranMapColors.violet : GranMapColors.amber,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(text, style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _format(DateTime? date) {
+    if (date == null) return 'uma sessão anterior';
+    final local = date.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/${local.month.toString().padLeft(2, '0')} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 }
 

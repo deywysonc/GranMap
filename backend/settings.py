@@ -18,6 +18,10 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     database_url: str | None = None
+    database_pool_size: int = Field(default=3, ge=1, le=20)
+    database_max_overflow: int = Field(default=2, ge=0, le=20)
+    database_pool_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    database_pool_recycle_seconds: int = Field(default=300, ge=30, le=3600)
     db_path: Path = Path(__file__).with_name("granmap.db")
     # Evita que pydantic-settings tente decodificar a variável como JSON antes
     # do nosso validador. Em produção aceitamos a forma operacional simples:
@@ -26,6 +30,22 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     session_days: int = Field(default=30, ge=1, le=90)
     login_attempts_per_minute: int = Field(default=8, ge=3, le=100)
+    minimum_app_build: int = Field(default=5, ge=1)
+    latest_app_build: int = Field(default=6, ge=1)
+    maintenance_mode: bool = False
+    feature_ar_enabled: bool = True
+    feature_physical_positioning_enabled: bool = True
+    feature_community_writes_enabled: bool = True
+    retention_history_days: int = Field(default=180, ge=30, le=3650)
+    retention_read_notifications_days: int = Field(default=90, ge=7, le=3650)
+    retention_auth_events_days: int = Field(default=365, ge=30, le=3650)
+    retention_fingerprint_identity_days: int = Field(default=180, ge=1, le=3650)
+    smtp_host: str | None = None
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_from_email: str | None = None
+    smtp_starttls: bool = True
     trusted_proxy_headers: bool = False
     metrics_enabled: bool = True
     commercial_launch: bool = False
@@ -52,6 +72,10 @@ class Settings(BaseSettings):
     def validate_production(self) -> None:
         if not self.is_production:
             return
+        if self.latest_app_build < self.minimum_app_build:
+            raise RuntimeError(
+                "GRANMAP_LATEST_APP_BUILD não pode ser menor que GRANMAP_MINIMUM_APP_BUILD."
+            )
         if not self.database_url or not self.database_url.startswith(
             ("postgresql://", "postgresql+psycopg://")
         ):
@@ -74,6 +98,8 @@ class Settings(BaseSettings):
                 missing.append("GRANMAP_ERP_BASE_URL/GRANMAP_ERP_API_TOKEN")
             if not self.push_provider or not self.push_credentials_configured:
                 missing.append("GRANMAP_PUSH_PROVIDER/GRANMAP_PUSH_CREDENTIALS_CONFIGURED")
+            if not self.smtp_host or not self.smtp_from_email:
+                missing.append("GRANMAP_SMTP_HOST/GRANMAP_SMTP_FROM_EMAIL")
             if missing:
                 raise RuntimeError(
                     "Lançamento comercial bloqueado; configure: " + ", ".join(missing)

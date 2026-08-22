@@ -85,3 +85,7 @@ jobs:
         working-directory: app
       - run: flutter build web --release
         working-directory: app
+      - run: >-
+          flutter build apk --flavor demo --debug
+          --dart-define=GRANMAP_API_URL=http://127.0.0.1:8000
+        working-directory: app

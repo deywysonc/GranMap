@@ -24,6 +24,28 @@ abstract final class GranMapColors {
 abstract final class GranMapTheme {
   static ThemeData get light => dark;
 
+  static ThemeData get highContrastDark {
+    final base = dark;
+    final scheme = base.colorScheme.copyWith(
+      onSurface: Colors.white,
+      onSurfaceVariant: const Color(0xFFD8E5F8),
+      outline: const Color(0xFFB9CAE2),
+      outlineVariant: const Color(0xFF7187A6),
+    );
+    return base.copyWith(
+      colorScheme: scheme,
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFF7187A6),
+        thickness: 1.2,
+        space: 1,
+      ),
+      textTheme: base.textTheme.apply(
+        bodyColor: Colors.white,
+        displayColor: Colors.white,
+      ),
+    );
+  }
+
   static ThemeData get dark {
     const scheme = ColorScheme(
       brightness: Brightness.dark,
