@@ -1,27 +1,52 @@
 """Cria o cenário determinístico usado na apresentação do GranMap."""
 
-import hashlib
 import os
 
-from auth_router import PASSWORD_ITERATIONS
 from db import DB_PATH, connect, init_db
 from map_service import ensure_initial_map
 from room_catalog import ROOMS
+from security import PASSWORD_ALGORITHM, hash_password
 from settings import get_settings
 
 
 DEMO_PASSWORD = "GranMap123!"
+DEMO_PASSWORDS_MARKER = "demo.passwords.argon2id.v1"
+DEMO_USER_EMAILS = (
+    "aluno@granmap.demo",
+    "bruno@granmap.demo",
+    "professor@granmap.demo",
+    "moderador@granmap.demo",
+    "admin@granmap.demo",
+)
 
 
-def password_material(email: str):
-    salt = hashlib.sha256(f"granmap-demo:{email}".encode()).hexdigest()[:32]
-    digest = hashlib.pbkdf2_hmac(
-        "sha256",
-        DEMO_PASSWORD.encode(),
-        bytes.fromhex(salt),
-        PASSWORD_ITERATIONS,
-    ).hex()
-    return digest, salt
+def repair_demo_passwords(con):
+    already_repaired = con.execute(
+        "SELECT 1 FROM audit_log WHERE action = ? LIMIT 1",
+        (DEMO_PASSWORDS_MARKER,),
+    ).fetchone()
+    if already_repaired:
+        return False
+
+    for email in DEMO_USER_EMAILS:
+        con.execute(
+            """
+            UPDATE users
+            SET password_hash = ?, password_salt = '', password_algorithm = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE email = ?
+            """,
+            (hash_password(DEMO_PASSWORD), PASSWORD_ALGORITHM, email),
+        )
+    con.execute(
+        "INSERT INTO audit_log(action, details) VALUES (?, ?)",
+        (
+            DEMO_PASSWORDS_MARKER,
+            "Credenciais demo armazenadas com Argon2id",
+        ),
+    )
+    con.commit()
+    return True
 
 
 def ensure_course(con, name: str):
@@ -79,17 +104,18 @@ def ensure_user(
     role: str,
     reputation: int,
 ):
-    password_hash, salt = password_material(email)
+    password_hash = hash_password(DEMO_PASSWORD)
     con.execute(
         """
         INSERT INTO users(
-            name, email, password_hash, password_salt, course_name,
-            semester, group_name, role, reputation
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            name, email, password_hash, password_salt, password_algorithm,
+            course_name, semester, group_name, role, reputation
+        ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?)
         ON CONFLICT(email) DO UPDATE SET
             name = excluded.name,
             password_hash = excluded.password_hash,
             password_salt = excluded.password_salt,
+            password_algorithm = excluded.password_algorithm,
             course_name = excluded.course_name,
             semester = excluded.semester,
             group_name = excluded.group_name,
@@ -101,7 +127,7 @@ def ensure_user(
             name,
             email,
             password_hash,
-            salt,
+            PASSWORD_ALGORITHM,
             course,
             semester,
             group_name,
@@ -140,7 +166,10 @@ def seed_demo():
             ("demo.seeded",),
         ).fetchone()
         if already_seeded:
-            print("GranMap demo já estava preparada; nenhuma alteração aplicada.")
+            if repair_demo_passwords(con):
+                print("Credenciais da demo atualizadas com Argon2id.")
+            else:
+                print("GranMap demo já estava preparada; nenhuma alteração aplicada.")
             return
 
         courses = {
@@ -458,6 +487,16 @@ def seed_demo():
                 SELECT 1 FROM audit_log WHERE action = 'demo.seeded'
             )
             """
+        )
+        con.execute(
+            """
+            INSERT INTO audit_log(action, details)
+            SELECT ?, 'Credenciais demo armazenadas com Argon2id'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM audit_log WHERE action = ?
+            )
+            """,
+            (DEMO_PASSWORDS_MARKER, DEMO_PASSWORDS_MARKER),
         )
         con.commit()
 
