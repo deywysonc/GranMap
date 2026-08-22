@@ -1,11 +1,13 @@
 """Cria o cenário determinístico usado na apresentação do GranMap."""
 
 import hashlib
+import os
 
 from auth_router import PASSWORD_ITERATIONS
 from db import DB_PATH, connect, init_db
 from map_service import ensure_initial_map
 from room_catalog import ROOMS
+from settings import get_settings
 
 
 DEMO_PASSWORD = "GranMap123!"
@@ -115,7 +117,17 @@ def room_id(con, poi_id: str):
 
 
 def seed_demo():
-    if DB_PATH.name != "granmap_demo.db":
+    settings = get_settings()
+    remote_seed_allowed = (
+        os.environ.get("GRANMAP_ALLOW_REMOTE_DEMO_SEED", "false").lower()
+        == "true"
+    )
+    if settings.database_url and not remote_seed_allowed:
+        raise SystemExit(
+            "Seed remoto recusado. Defina "
+            "GRANMAP_ALLOW_REMOTE_DEMO_SEED=true somente na demo hospedada."
+        )
+    if not settings.database_url and DB_PATH.name != "granmap_demo.db":
         raise SystemExit(
             "Por segurança, seed_demo.py só opera em granmap_demo.db. "
             "Defina GRANMAP_DB_PATH para o banco de demonstração."
@@ -123,6 +135,14 @@ def seed_demo():
 
     init_db()
     with connect() as con:
+        already_seeded = con.execute(
+            "SELECT 1 FROM audit_log WHERE action = ? LIMIT 1",
+            ("demo.seeded",),
+        ).fetchone()
+        if already_seeded:
+            print("GranMap demo já estava preparada; nenhuma alteração aplicada.")
+            return
+
         courses = {
             name: ensure_course(con, name)
             for name in [
@@ -487,7 +507,8 @@ def seed_demo():
             )
         con.commit()
 
-    print(f"GranMap demo pronta em: {DB_PATH}")
+    target = "PostgreSQL remoto" if settings.database_url else str(DB_PATH)
+    print(f"GranMap demo pronta em: {target}")
     print("Aluno: aluno@granmap.demo / GranMap123!")
     print("Admin: admin@granmap.demo / GranMap123!")
 
