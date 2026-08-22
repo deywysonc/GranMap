@@ -1,8 +1,9 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -18,7 +19,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str | None = None
     db_path: Path = Path(__file__).with_name("granmap.db")
-    public_origins: list[str] = Field(default_factory=list)
+    # Evita que pydantic-settings tente decodificar a variável como JSON antes
+    # do nosso validador. Em produção aceitamos a forma operacional simples:
+    # GRANMAP_PUBLIC_ORIGINS=https://admin.example.com,https://app.example.com
+    public_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
     cookie_secure: bool = False
     session_days: int = Field(default=30, ge=1, le=90)
     login_attempts_per_minute: int = Field(default=8, ge=3, le=100)

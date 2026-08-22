@@ -1,10 +1,30 @@
 import unittest
+from unittest.mock import patch
 
 import integration_router
 from settings import Settings
 
 
 class IntegrationReadinessTest(unittest.TestCase):
+    def test_public_origins_accepts_comma_separated_environment_value(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "GRANMAP_PUBLIC_ORIGINS": (
+                    "https://admin.granmap.example,https://app.granmap.example"
+                )
+            },
+        ):
+            settings = Settings(_env_file=None)
+
+        self.assertEqual(
+            settings.public_origins,
+            [
+                "https://admin.granmap.example",
+                "https://app.granmap.example",
+            ],
+        )
+
     def test_public_status_never_exposes_credentials(self):
         payload = integration_router.integration_status()
         self.assertIn("checks", payload)
