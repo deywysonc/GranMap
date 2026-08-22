@@ -32,6 +32,7 @@ ADMIN_ROLES = {"coordination", "admin"}
 MODERATION_ROLES = {"moderator", "coordination", "admin"}
 USER_ADMIN_ROLES = {"admin"}
 APP_VERSION = "0.12.0"
+settings = get_settings()
 
 
 @asynccontextmanager
@@ -50,9 +51,10 @@ app = FastAPI(
         "do GranMap."
     ),
     lifespan=lifespan,
+    docs_url="/docs" if settings.api_docs_enabled else None,
+    redoc_url="/redoc" if settings.api_docs_enabled else None,
+    openapi_url="/openapi.json" if settings.api_docs_enabled else None,
 )
-
-settings = get_settings()
 
 app.add_middleware(
     CORSMiddleware,

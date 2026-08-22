@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     # do nosso validador. Em produção aceitamos a forma operacional simples:
     # GRANMAP_PUBLIC_ORIGINS=https://admin.example.com,https://app.example.com
     public_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    api_docs_enabled: bool = True
     cookie_secure: bool = False
     session_days: int = Field(default=30, ge=1, le=90)
     login_attempts_per_minute: int = Field(default=8, ge=3, le=100)

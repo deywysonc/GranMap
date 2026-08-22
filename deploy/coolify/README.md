@@ -32,7 +32,9 @@ O painel e a API ficam no mesmo domínio:
 ## Operação
 
 - Banco persistente: volume `granmap-postgres-data`.
+- Backup diário automático: volume `granmap-postgres-backups`, em formato
+  PostgreSQL custom (`pg_restore`), com retenção de 14 dias.
 - Migrations: executadas pelo backend antes do Uvicorn.
-- Retenção: crie uma tarefa agendada semanal no backend com `python retention.py`.
-- Backup: agende backup do volume/banco antes de liberar usuários reais.
+- Retenção: o serviço `maintenance` executa `python retention.py` semanalmente.
+- Documentação OpenAPI: desativada no ambiente público.
 - Não inicie o proxy do Coolify sem autorização do responsável pelo servidor.

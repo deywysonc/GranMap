@@ -27,6 +27,7 @@ services:
       GRANMAP_ENVIRONMENT: production
       GRANMAP_DATABASE_URL: postgresql://granmap:${GRANMAP_POSTGRES_PASSWORD}@database:5432/granmap
       GRANMAP_PUBLIC_ORIGINS: ${GRANMAP_PUBLIC_ORIGINS:-https://granmap.weblab.dev.br}
+      GRANMAP_API_DOCS_ENABLED: "false"
       GRANMAP_COOKIE_SECURE: "true"
       GRANMAP_TRUSTED_PROXY_HEADERS: "true"
       GRANMAP_METRICS_ENABLED: "false"
@@ -54,6 +55,74 @@ services:
       retries: 20
     restart: unless-stopped
 
+  maintenance:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      GRANMAP_ENVIRONMENT: production
+      GRANMAP_DATABASE_URL: postgresql://granmap:${GRANMAP_POSTGRES_PASSWORD}@database:5432/granmap
+      GRANMAP_COOKIE_SECURE: "true"
+      GRANMAP_PUBLIC_ORIGINS: ${GRANMAP_PUBLIC_ORIGINS:-https://granmap.weblab.dev.br}
+      GRANMAP_RUN_MIGRATIONS_ON_STARTUP: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        while true; do
+          python retention.py
+          sleep 604800
+        done
+    restart: unless-stopped
+
+  backup:
+    build:
+      context: .
+      dockerfile: deploy/coolify/Postgis.Dockerfile
+    environment:
+      PGHOST: database
+      PGPORT: "5432"
+      PGDATABASE: granmap
+      PGUSER: granmap
+      PGPASSWORD: ${GRANMAP_POSTGRES_PASSWORD}
+      BACKUP_INTERVAL_SECONDS: "86400"
+      BACKUP_RETENTION_DAYS: "14"
+    depends_on:
+      backend:
+        condition: service_healthy
+    volumes:
+      - granmap-postgres-backups:/backups
+    entrypoint:
+      - /bin/sh
+      - -c
+    command:
+      - |
+        set -eu
+        umask 077
+        while true; do
+          timestamp="$$(date -u +%Y%m%dT%H%M%SZ)"
+          temporary_file="/backups/granmap-$${timestamp}.dump.tmp"
+          final_file="/backups/granmap-$${timestamp}.dump"
+          pg_dump --format=custom --file="$${temporary_file}"
+          mv "$${temporary_file}" "$${final_file}"
+          find /backups -type f -name 'granmap-*.dump' \
+            -mtime +"$${BACKUP_RETENTION_DAYS}" -delete
+          sleep "$${BACKUP_INTERVAL_SECONDS}"
+        done
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - test -n "$$(find /backups -type f -name 'granmap-*.dump' -mmin -1500 -print -quit)"
+      interval: 60s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
   admin:
     build:
       context: admin_web
@@ -77,3 +146,4 @@ services:
 
 volumes:
   granmap-postgres-data:
+  granmap-postgres-backups:
