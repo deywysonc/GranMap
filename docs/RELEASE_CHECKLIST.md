@@ -2,22 +2,23 @@
 
 ## Versão validada
 
-- aplicativo: `1.3.0+6`;
+- aplicativo: `1.3.1+7`;
 - backend: `0.12.0`;
 - Admin: `0.5.0`;
-- API local usada pelo APK da demo: `http://192.168.1.11:8100`;
-- APK recomendado: `deliverables/GranMap-Demo-v1.3.0-arm64-v8a.apk`;
-- tamanho: 27.547.938 bytes (26,3 MB);
-- SHA-256: `2D8C892A1666341C3348E2AB52817EE3606869134CFEBEEB86FA08874C4EE838`.
+- API pública usada pelo APK da demo: `https://granmap.168.119.244.43.sslip.io/api`;
+- APK recomendado: `deliverables/GranMap-Demo-v1.3.1-arm64-v8a.apk`;
+- tamanho: 27.548.471 bytes (26,3 MB);
+- SHA-256: `0FEE7D6B59F7D3FB71D2536074E271F907348AA6C7CD571F887F410ED8D6BDF4`;
+- download público estável: `https://granmap.168.119.244.43.sslip.io/baixar`.
 
 O APK é assinado corretamente com APK Signature Scheme v2 e usa a chave de
 debug apenas para instalação da demo. A loja exige a chave definitiva da
 instituição e o flavor `production`.
 
-## Verificações concluídas em 22/08/2026
+## Verificações concluídas em 23/08/2026
 
 - `flutter analyze`: aprovado;
-- `flutter test`: 35 testes aprovados;
+- `flutter test`: 37 testes aprovados;
 - backend: 22 testes aprovados;
 - Admin: 3 testes aprovados;
 - `npm audit --omit=dev`: nenhuma vulnerabilidade;
@@ -43,7 +44,7 @@ ligado. Para validar todos os serviços e o download:
   -ApiBase http://192.168.1.11:8100 `
   -AppUrl http://192.168.1.11:8088 `
   -AdminUrl http://192.168.1.11:5174 `
-  -ApkUrl http://192.168.1.11:8090/GranMap-demo-v14-arm64.apk
+  -ApkUrl http://192.168.1.11:8090/GranMap-demo-v15-arm64.apk
 ```
 
 ## Antes do lançamento público

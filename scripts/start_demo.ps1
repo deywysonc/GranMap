@@ -51,7 +51,7 @@ $accessHost = if ($Lan) { Get-LanIPv4 } else { '127.0.0.1' }
 $apiUrl = "http://${accessHost}:8100"
 $adminUrl = "http://${accessHost}:5174"
 $appUrl = "http://${accessHost}:8088"
-$apkName = 'GranMap-demo-v14-arm64.apk'
+$apkName = 'GranMap-demo-v15-arm64.apk'
 $apkPath = Join-Path $distRoot $apkName
 $apkUrl = "http://${accessHost}:8090/$apkName"
 
