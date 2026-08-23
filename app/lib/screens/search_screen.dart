@@ -10,11 +10,13 @@ import 'route_screen.dart';
 class SearchScreen extends StatefulWidget {
   final CampusMap campus;
   final Set<String> blockedEdgeIds;
+  final int initialRouteView;
 
   const SearchScreen({
     super.key,
     required this.campus,
     this.blockedEdgeIds = const {},
+    this.initialRouteView = 0,
   });
 
   @override
@@ -84,6 +86,7 @@ class _SearchScreenState extends State<SearchScreen> {
           origin: _origin,
           destination: poi,
           blockedEdgeIds: widget.blockedEdgeIds,
+          initialView: widget.initialRouteView,
         ),
       ),
     );
@@ -110,6 +113,38 @@ class _SearchScreenState extends State<SearchScreen> {
                   'Buscar',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
+                if (widget.initialRouteView >= 2) ...[
+                  const SizedBox(height: 12),
+                  GranMapSurface(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 11,
+                    ),
+                    gradient: LinearGradient(
+                      colors: [
+                        GranMapColors.orange.withValues(alpha: .14),
+                        GranMapColors.violet.withValues(alpha: .08),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          widget.initialRouteView == 2
+                              ? Icons.directions_walk_rounded
+                              : Icons.view_in_ar_rounded,
+                          color: GranMapColors.orange,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Escolha o destino para abrir o modo ${widget.initialRouteView == 2 ? 'Walk' : 'AR'}.',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TextField(
                   controller: _controller,
@@ -288,9 +323,18 @@ class _SearchResultCard extends StatelessWidget {
             tooltip: favorite ? 'Remover dos favoritos' : 'Favoritar',
             onPressed: onFavorite,
             icon: Icon(
-              favorite ? Icons.favorite_rounded : Icons.near_me_outlined,
+              favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
               color: favorite ? GranMapColors.orange : GranMapColors.orange,
-              size: 19,
+              size: 18,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Traçar rota até ${poi.name}',
+            onPressed: onTap,
+            icon: const Icon(
+              Icons.near_me_rounded,
+              color: GranMapColors.orange,
+              size: 20,
             ),
           ),
         ],

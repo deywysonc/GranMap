@@ -7,6 +7,7 @@ import '../navigation/navigation_session.dart';
 import '../navigation/route_result.dart';
 import '../services/app_preferences.dart';
 import '../services/app_runtime_config.dart';
+import '../services/personal_data_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_lens_canvas.dart';
 import '../widgets/campus_map_canvas.dart';
@@ -19,6 +20,7 @@ class RouteScreen extends StatefulWidget {
   final CampusPoi origin;
   final CampusPoi destination;
   final Set<String> blockedEdgeIds;
+  final int initialView;
 
   const RouteScreen({
     super.key,
@@ -26,6 +28,7 @@ class RouteScreen extends StatefulWidget {
     required this.origin,
     required this.destination,
     this.blockedEdgeIds = const {},
+    this.initialView = 0,
   });
 
   @override
@@ -34,23 +37,62 @@ class RouteScreen extends StatefulWidget {
 
 class _RouteScreenState extends State<RouteScreen> {
   final _navigation = const NavigationService();
+  final _personal = PersonalDataService();
   RouteResult? _route;
   NavigationSession? _session;
   bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
-  int _view = 0;
+  late int _view;
   int _lastFeedbackSegment = -1;
+  bool _favorite = false;
 
   @override
   void initState() {
     super.initState();
+    _view = widget.initialView.clamp(0, 3);
+    if (_view == 3 && !AppRuntimeConfig.instance.arEnabled) _view = 0;
     _configure();
+    _loadFavorite();
   }
 
   @override
   void dispose() {
     _session?.removeListener(_changed);
     _session?.dispose();
+    _personal.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadFavorite() async {
+    final favorites = await _personal.loadFavorites();
+    if (mounted) {
+      setState(() => _favorite = favorites.contains(widget.destination.id));
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final favorites = await _personal.loadFavorites();
+    final next = await _personal.toggleFavorite(
+      widget.destination.id,
+      favorites,
+    );
+    if (mounted) {
+      setState(() => _favorite = next.contains(widget.destination.id));
+    }
+  }
+
+  Future<void> _copyRoute() async {
+    await Clipboard.setData(
+      ClipboardData(
+        text:
+            'GranMap: rota até ${widget.destination.name}, '
+            '${widget.destination.floor == 0 ? 'térreo' : 'piso ${widget.destination.floor}'}.',
+      ),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Resumo da rota copiado.')));
+    }
   }
 
   void _configure({bool resume = false}) {
@@ -235,6 +277,9 @@ class _RouteScreenState extends State<RouteScreen> {
                     destination: widget.destination,
                     route: route,
                     accessible: _accessibleOnly,
+                    favorite: _favorite,
+                    onFavorite: _toggleFavorite,
+                    onShare: _copyRoute,
                     onStart: session.start,
                   )
                 : _ActiveNavigationSheet(
@@ -451,12 +496,18 @@ class _DestinationSheet extends StatelessWidget {
   final CampusPoi destination;
   final RouteResult route;
   final bool accessible;
+  final bool favorite;
+  final VoidCallback onFavorite;
+  final VoidCallback onShare;
   final VoidCallback onStart;
 
   const _DestinationSheet({
     required this.destination,
     required this.route,
     required this.accessible,
+    required this.favorite,
+    required this.onFavorite,
+    required this.onShare,
     required this.onStart,
   });
 
@@ -512,14 +563,20 @@ class _DestinationSheet extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.favorite_border_rounded,
-                  color: GranMapColors.textMuted,
+                tooltip: favorite ? 'Remover dos favoritos' : 'Favoritar',
+                onPressed: onFavorite,
+                icon: Icon(
+                  favorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: favorite
+                      ? GranMapColors.orange
+                      : GranMapColors.textMuted,
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                tooltip: 'Copiar resumo da rota',
+                onPressed: onShare,
                 icon: const Icon(
                   Icons.share_outlined,
                   color: GranMapColors.textMuted,

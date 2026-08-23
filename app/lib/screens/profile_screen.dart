@@ -201,7 +201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             _SettingsRow(
                               icon: Icons.near_me_outlined,
-                              title: 'Permissões de localização',
+                              title: 'Sensores durante o uso',
                               trailing: Switch(
                                 value: preferences.locationEnabled,
                                 activeTrackColor: GranMapColors.orange,

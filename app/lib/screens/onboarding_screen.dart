@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../services/app_preferences.dart';
@@ -29,7 +31,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.my_location_rounded,
       eyebrow: 'LOCALIZAÇÃO HONESTA',
       title: 'Confiança antes da precisão',
-      description: 'O GranMap informa quando sua posição é simulada, aproximada ou reancorada por QR. Sensores só são ativados quando você pedir.',
+      description: 'O GranMap informa quando sua posição é simulada, aproximada ou reancorada por QR. Os sensores de movimento ficam ativos enquanto o aplicativo estiver em uso.',
       color: GranMapColors.sky,
     ),
     _OnboardingPage(
@@ -123,7 +125,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Future<void> _finish() async {
-    await AppPreferences.instance.completeOnboarding();
+    unawaited(AppPreferences.instance.completeOnboarding());
     widget.onCompleted();
   }
 }

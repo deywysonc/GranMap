@@ -25,7 +25,6 @@ class GranMapApi {
         'GET',
         '/health',
         timeout: const Duration(seconds: 3),
-        retryable: true,
       );
       return response.statusCode == 200;
     } catch (_) {
@@ -34,7 +33,11 @@ class GranMapApi {
   }
 
   Future<Map<String, dynamic>> fetchAppConfig() async {
-    final response = await _request('GET', '/app-config', retryable: true);
+    final response = await _request(
+      'GET',
+      '/app-config',
+      timeout: const Duration(seconds: 3),
+    );
     _ensureSuccess(response);
     return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
@@ -66,7 +69,7 @@ class GranMapApi {
       'GET',
       '/maps/current',
       headers: etag == null ? null : {'If-None-Match': etag},
-      retryable: true,
+      timeout: const Duration(seconds: 4),
     );
     if (response.statusCode == 304) {
       return MapPublicationFetch(
@@ -85,8 +88,7 @@ class GranMapApi {
     final response = await _request(
       'GET',
       '/navigation/closures',
-      timeout: const Duration(seconds: 4),
-      retryable: true,
+      timeout: const Duration(seconds: 3),
     );
     _ensureSuccess(response);
     return (jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>)
@@ -163,7 +165,7 @@ class GranMapApi {
     final response = await _request(
       'GET',
       '/positioning/fingerprints/reference',
-      retryable: true,
+      timeout: const Duration(seconds: 3),
     );
     _ensureSuccess(response);
     return (jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>)

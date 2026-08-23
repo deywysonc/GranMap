@@ -8,8 +8,14 @@ import '../widgets/campus_twin_canvas.dart';
 class MapScreen extends StatefulWidget {
   final CampusMap campus;
   final VoidCallback? onSearchRequested;
+  final ValueChanged<int>? onRouteModeRequested;
 
-  const MapScreen({super.key, required this.campus, this.onSearchRequested});
+  const MapScreen({
+    super.key,
+    required this.campus,
+    this.onSearchRequested,
+    this.onRouteModeRequested,
+  });
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -18,6 +24,7 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   int _floor = 0;
   int _view = 0;
+  int _cameraReset = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -45,17 +52,17 @@ class _MapScreenState extends State<MapScreen> {
           left: 0,
           right: 0,
           top: 62,
-          bottom: 132,
+          bottom: 154,
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 320),
             child: _view == 1
                 ? CampusTwinCanvas(
-                    key: ValueKey('twin_$_floor'),
+                    key: ValueKey('twin_${_floor}_$_cameraReset'),
                     campus: widget.campus,
                     focusFloor: _floor,
                   )
                 : CampusMapCanvas(
-                    key: ValueKey('map_$_floor'),
+                    key: ValueKey('map_${_floor}_$_cameraReset'),
                     campus: widget.campus,
                     floor: _floor,
                     fullBleed: true,
@@ -151,12 +158,10 @@ class _MapScreenState extends State<MapScreen> {
             selected: _view,
             onSelected: (value) {
               if (value > 1) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Escolha um destino para abrir Walk ou AR.'),
-                  ),
-                );
-                widget.onSearchRequested?.call();
+                widget.onRouteModeRequested?.call(value);
+                if (widget.onRouteModeRequested == null) {
+                  widget.onSearchRequested?.call();
+                }
                 return;
               }
               setState(() => _view = value);
@@ -169,6 +174,7 @@ class _MapScreenState extends State<MapScreen> {
           child: _MapSquareButton(
             icon: Icons.my_location_rounded,
             onTap: () {
+              setState(() => _cameraReset++);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Mapa recentralizado na Entrada Gran.'),
@@ -360,23 +366,28 @@ class _ViewSelector extends StatelessWidget {
       child: Column(
         children: [
           for (var index = 0; index < labels.length; index++)
-            InkWell(
-              onTap: () => onSelected(index),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 48,
-                height: 35,
-                alignment: Alignment.center,
-                color: selected == index
-                    ? GranMapColors.orange.withValues(alpha: .13)
-                    : Colors.transparent,
-                child: Text(
-                  labels[index],
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: selected == index
-                        ? GranMapColors.orange
-                        : GranMapColors.textMuted,
-                    fontWeight: FontWeight.w700,
+            Semantics(
+              button: true,
+              selected: selected == index,
+              label: 'Visual ${labels[index]}',
+              child: InkWell(
+                onTap: () => onSelected(index),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 52,
+                  height: 40,
+                  alignment: Alignment.center,
+                  color: selected == index
+                      ? GranMapColors.orange.withValues(alpha: .13)
+                      : Colors.transparent,
+                  child: Text(
+                    labels[index],
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: selected == index
+                          ? GranMapColors.orange
+                          : GranMapColors.textMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),

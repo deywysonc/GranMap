@@ -11,7 +11,7 @@ class AppPreferences extends ChangeNotifier {
   SharedPreferencesAsync? _preferences;
   bool _initialized = false;
   bool _onboardingCompleted = false;
-  bool _locationEnabled = false;
+  bool _locationEnabled = true;
   bool _highContrast = false;
   bool _accessibleRoutes = false;
 
@@ -32,7 +32,7 @@ class AppPreferences extends ChangeNotifier {
         preferences.getBool('granmap.preferences.accessible_routes'),
       ]);
       _onboardingCompleted = values[0] ?? false;
-      _locationEnabled = values[1] ?? false;
+      _locationEnabled = values[1] ?? true;
       _highContrast = values[2] ?? false;
       _accessibleRoutes = values[3] ?? false;
     } catch (_) {

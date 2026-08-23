@@ -18,7 +18,7 @@ class DeviceSensorService implements SensorService {
   final List<StreamSubscription<dynamic>> _subscriptions = [];
   double _ax = 0;
   double _ay = 0;
-  double _az = 9.81;
+  double _az = 0;
   double _gz = 0;
   double _mx = 0;
   double _my = 0;
@@ -30,6 +30,10 @@ class DeviceSensorService implements SensorService {
   DateTime? _lastGyroscopeAt;
   bool _aboveThreshold = false;
   bool _running = false;
+  bool _hasAccelerometer = false;
+  bool _hasGyroscope = false;
+  bool _hasMagnetometer = false;
+  bool _hasBarometer = false;
 
   @override
   Stream<SensorSnapshot> get snapshots => _controller.stream;
@@ -45,6 +49,7 @@ class DeviceSensorService implements SensorService {
     _subscriptions.add(
       gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval)
           .listen((event) {
+            _hasGyroscope = true;
             _gz = event.z;
             final now = DateTime.now();
             final elapsed = _lastGyroscopeAt == null
@@ -59,6 +64,7 @@ class DeviceSensorService implements SensorService {
     _subscriptions.add(
       magnetometerEventStream(samplingPeriod: SensorInterval.uiInterval)
           .listen((event) {
+            _hasMagnetometer = true;
             _mx = event.x;
             _my = event.y;
             _mz = event.z;
@@ -72,6 +78,7 @@ class DeviceSensorService implements SensorService {
     _subscriptions.add(
       barometerEventStream(samplingPeriod: SensorInterval.normalInterval)
           .listen((event) {
+            _hasBarometer = true;
             _pressure = event.pressure;
             _emit();
           }, onError: (_) {}),
@@ -80,6 +87,7 @@ class DeviceSensorService implements SensorService {
   }
 
   void _onAcceleration(UserAccelerometerEvent event) {
+    _hasAccelerometer = true;
     _ax = event.x;
     _ay = event.y;
     _az = event.z;
@@ -101,9 +109,10 @@ class DeviceSensorService implements SensorService {
     if (!_running || _controller.isClosed) return;
     final magnetic = math.sqrt(_mx * _mx + _my * _my + _mz * _mz);
     final availableSignals = [
-      _mx != 0 || _my != 0 || _mz != 0,
-      _gz != 0,
-      _ax != 0 || _ay != 0 || _az != 0,
+      _hasAccelerometer,
+      _hasGyroscope,
+      _hasMagnetometer,
+      _hasBarometer,
     ].where((value) => value).length;
     _controller.add(
       SensorSnapshot(
@@ -117,7 +126,7 @@ class DeviceSensorService implements SensorService {
         magneticField: magnetic,
         headingDegrees: _heading,
         stepCount: _stepCount,
-        confidence: (.36 + availableSignals * .17).clamp(0, .87),
+        confidence: (.34 + availableSignals * .145).clamp(0, .92),
         pressureHpa: _pressure,
         source: 'device',
         timestamp: DateTime.now(),

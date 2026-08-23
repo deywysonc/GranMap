@@ -106,6 +106,10 @@ class CampusMapRepository {
       }
     }
 
+    return loadBundledCampus();
+  }
+
+  Future<CampusMapSnapshot> loadBundledCampus() async {
     final jsonString = await rootBundle.loadString(
       'assets/maps/gran_tiete_upper_floorplan_v11.json',
     );

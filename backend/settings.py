@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     session_days: int = Field(default=30, ge=1, le=90)
     login_attempts_per_minute: int = Field(default=8, ge=3, le=100)
     minimum_app_build: int = Field(default=5, ge=1)
-    latest_app_build: int = Field(default=7, ge=1)
+    latest_app_build: int = Field(default=8, ge=1)
     maintenance_mode: bool = False
     feature_ar_enabled: bool = True
     feature_physical_positioning_enabled: bool = True

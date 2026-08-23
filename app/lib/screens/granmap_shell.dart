@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/campus_map_repository.dart';
 import '../models/campus_map.dart';
+import '../positioning/app_sensor_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'community_screen.dart';
@@ -32,8 +35,11 @@ class GranMapShell extends StatefulWidget {
   State<GranMapShell> createState() => _GranMapShellState();
 }
 
-class _GranMapShellState extends State<GranMapShell> {
+class _GranMapShellState extends State<GranMapShell>
+    with WidgetsBindingObserver {
   int _index = 0;
+  int _requestedRouteView = 0;
+  final AppSensorService _sensors = AppSensorService.instance;
 
   static const _items = [
     _NavItem(Icons.home_rounded, Icons.home_outlined, 'Início'),
@@ -43,7 +49,39 @@ class _GranMapShellState extends State<GranMapShell> {
     _NavItem(Icons.person_rounded, Icons.person_outline_rounded, 'Perfil'),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_sensors.start());
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (foreground ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(_sensors.setForeground(foreground));
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(_sensors.stop());
+    super.dispose();
+  }
+
   void _select(int index) => setState(() => _index = index);
+
+  void _requestRouteView(int view) {
+    setState(() {
+      _requestedRouteView = view;
+      _index = 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,8 +94,13 @@ class _GranMapShellState extends State<GranMapShell> {
       SearchScreen(
         campus: widget.campus,
         blockedEdgeIds: widget.blockedEdgeIds,
+        initialRouteView: _requestedRouteView,
       ),
-      MapScreen(campus: widget.campus, onSearchRequested: () => _select(1)),
+      MapScreen(
+        campus: widget.campus,
+        onSearchRequested: () => _select(1),
+        onRouteModeRequested: _requestRouteView,
+      ),
       const CommunityScreen(),
       ProfileScreen(campus: widget.campus),
     ];

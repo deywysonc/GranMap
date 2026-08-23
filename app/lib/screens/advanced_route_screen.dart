@@ -7,7 +7,7 @@ import '../models/campus_map.dart';
 import '../navigation/navigation_service.dart';
 import '../navigation/navigation_session.dart';
 import '../navigation/route_result.dart';
-import '../positioning/device_sensor_service.dart';
+import '../positioning/app_sensor_service.dart';
 import '../positioning/gps_entrance_service.dart';
 import '../positioning/pdr_positioning_service.dart';
 import '../positioning/position_sample.dart';
@@ -47,7 +47,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
   RouteResult? _route;
   NavigationSession? _session;
   Timer? _closureTimer;
-  DeviceSensorService? _deviceSensors;
+  AppSensorService? _deviceSensors;
   PdrPositioningService? _pdr;
   StreamSubscription<PositionSample>? _physicalPositionSubscription;
   late Set<String> _blockedEdgeIds;
@@ -72,6 +72,13 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       const Duration(seconds: 15),
       (_) => _refreshClosures(),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted &&
+          AppPreferences.instance.locationEnabled &&
+          AppRuntimeConfig.instance.physicalPositioningEnabled) {
+        _toggleRealPositioning();
+      }
+    });
   }
 
   @override
@@ -81,7 +88,6 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
     _closureTimer?.cancel();
     _physicalPositionSubscription?.cancel();
     _pdr?.dispose();
-    _deviceSensors?.dispose();
     _api.dispose();
     super.dispose();
   }
@@ -188,7 +194,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
     }
     if (!_realPositioning && !AppPreferences.instance.locationEnabled) {
       setState(() {
-        _positioningNotice = 'Ative “Permissões de localização” no Perfil antes de usar sensores físicos.';
+        _positioningNotice = 'Ative “Sensores durante o uso” no Perfil para usar o posicionamento físico.';
       });
       return;
     }
@@ -209,27 +215,23 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
     try {
       final session = _session;
       if (session == null) return;
-      _deviceSensors ??= DeviceSensorService();
+      _deviceSensors ??= AppSensorService.instance;
       _pdr ??= PdrPositioningService(
         campus: widget.campus,
         sensors: _deviceSensors!,
         initialPosition: session.position,
       );
-      try {
-        _pdr!.setMagneticReferences(await _api.fetchMagneticReferences());
-      } catch (_) {
-        // PDR e QR continuam disponíveis sem um mapa magnético em cache/rede.
-      }
       _physicalPositionSubscription ??= _pdr!.positions.listen((position) {
         _session?.applyExternalPosition(position);
       });
-      await _pdr!.start();
+      await _pdr!.start().timeout(const Duration(seconds: 2));
       if (mounted) {
         setState(() {
           _realPositioning = true;
-          _positioningNotice = 'PDR físico ativo: passos, bússola e map matching. Reancore por QR para limitar deriva.';
+          _positioningNotice = 'Sensores físicos ativos durante o uso: passos, bússola e map matching. Reancore por QR para limitar deriva.';
         });
       }
+      unawaited(_loadMagneticReferences());
     } catch (error) {
       if (mounted) {
         setState(() {
@@ -238,6 +240,14 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       }
     } finally {
       if (mounted) setState(() => _positioningBusy = false);
+    }
+  }
+
+  Future<void> _loadMagneticReferences() async {
+    try {
+      _pdr?.setMagneticReferences(await _api.fetchMagneticReferences());
+    } catch (_) {
+      // PDR e QR continuam disponíveis sem mapa magnético em cache/rede.
     }
   }
 

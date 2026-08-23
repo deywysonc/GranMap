@@ -28,6 +28,8 @@ void main() {
     final received = <PositionSample>[];
     final subscription = service.positions.listen(received.add);
     await service.start();
+    await service.start();
+    expect(sensors.startCalls, 1);
 
     sensors.emit(steps: 1, heading: 0);
     await Future<void>.delayed(Duration.zero);
@@ -52,6 +54,7 @@ void main() {
 
     await subscription.cancel();
     await service.dispose();
+    expect(sensors.stopCalls, 1);
     await sensors.dispose();
   });
 }
@@ -59,6 +62,8 @@ void main() {
 class _FakeSensors implements SensorService {
   final StreamController<SensorSnapshot> _controller =
       StreamController<SensorSnapshot>.broadcast();
+  int startCalls = 0;
+  int stopCalls = 0;
 
   @override
   Stream<SensorSnapshot> get snapshots => _controller.stream;
@@ -84,10 +89,10 @@ class _FakeSensors implements SensorService {
   Future<void> reset() async {}
 
   @override
-  Future<void> start() async {}
+  Future<void> start() async => startCalls++;
 
   @override
-  Future<void> stop() async {}
+  Future<void> stop() async => stopCalls++;
 
   Future<void> dispose() => _controller.close();
 }

@@ -27,6 +27,16 @@ class CampusTwinCanvas extends StatefulWidget {
 class _CampusTwinCanvasState extends State<CampusTwinCanvas> {
   double _rotation = -.48;
   double _explosion = .72;
+  double _zoom = 1;
+  double _gestureZoom = 1;
+
+  void _resetView() {
+    setState(() {
+      _rotation = -.48;
+      _explosion = .72;
+      _zoom = 1;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,18 +45,28 @@ class _CampusTwinCanvasState extends State<CampusTwinCanvas> {
         Expanded(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onHorizontalDragUpdate: (details) {
-              setState(() => _rotation += details.delta.dx * .008);
+            onDoubleTap: _resetView,
+            onScaleStart: (_) {
+              _gestureZoom = _zoom;
             },
-            child: CustomPaint(
-              painter: _CampusTwinPainter(
-                campus: widget.campus,
-                focusFloor: widget.focusFloor,
-                route: widget.route,
-                userPosition: widget.userPosition,
-                rotation: _rotation,
-                explosion: _explosion,
-                colorScheme: Theme.of(context).colorScheme,
+            onScaleUpdate: (details) {
+              setState(() {
+                _zoom = (_gestureZoom * details.scale).clamp(.72, 2.4);
+                _rotation += details.focalPointDelta.dx * .012;
+              });
+            },
+            child: SizedBox.expand(
+              child: CustomPaint(
+                painter: _CampusTwinPainter(
+                  campus: widget.campus,
+                  focusFloor: widget.focusFloor,
+                  route: widget.route,
+                  userPosition: widget.userPosition,
+                  rotation: _rotation,
+                  explosion: _explosion,
+                  zoom: _zoom,
+                  colorScheme: Theme.of(context).colorScheme,
+                ),
               ),
             ),
           ),
@@ -57,17 +77,22 @@ class _CampusTwinCanvasState extends State<CampusTwinCanvas> {
             children: [
               const Icon(Icons.view_in_ar_rounded, size: 18),
               const SizedBox(width: 7),
-              Text(
-                'Arraste para girar',
-                style: Theme.of(context).textTheme.labelMedium,
+              Expanded(
+                child: Text(
+                  'Arraste para girar • pinça para ampliar',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall,
+                ),
               ),
-              const Spacer(),
-              Text(
-                'Separar pisos',
-                style: Theme.of(context).textTheme.labelSmall,
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Restaurar visualização 3D',
+                onPressed: _resetView,
+                icon: const Icon(Icons.center_focus_strong_rounded, size: 18),
               ),
               SizedBox(
-                width: 118,
+                width: 92,
                 child: Slider(
                   value: _explosion,
                   onChanged: (value) => setState(() => _explosion = value),
@@ -88,6 +113,7 @@ class _CampusTwinPainter extends CustomPainter {
   final PositionSample? userPosition;
   final double rotation;
   final double explosion;
+  final double zoom;
   final ColorScheme colorScheme;
 
   _CampusTwinPainter({
@@ -97,6 +123,7 @@ class _CampusTwinPainter extends CustomPainter {
     required this.userPosition,
     required this.rotation,
     required this.explosion,
+    required this.zoom,
     required this.colorScheme,
   });
 
@@ -132,6 +159,7 @@ class _CampusTwinPainter extends CustomPainter {
       floors: campus.floors.map((floor) => floor.level).toList(),
       rotation: rotation,
       explosion: explosion,
+      zoom: zoom,
     );
 
     for (final floor in campus.floors) {
@@ -394,6 +422,7 @@ class _CampusTwinPainter extends CustomPainter {
         oldDelegate.userPosition != userPosition ||
         oldDelegate.rotation != rotation ||
         oldDelegate.explosion != explosion ||
+        oldDelegate.zoom != zoom ||
         oldDelegate.colorScheme != colorScheme;
   }
 }
@@ -407,10 +436,13 @@ class _TwinProjection {
   final List<int> floors;
   final double rotation;
   final double explosion;
+  final double zoom;
 
   late final double _scale;
   late final double _minRawX;
   late final double _minRawY;
+  late final double _offsetX;
+  late final double _offsetY;
 
   _TwinProjection({
     required this.size,
@@ -421,6 +453,7 @@ class _TwinProjection {
     required this.floors,
     required this.rotation,
     required this.explosion,
+    required this.zoom,
   }) {
     final rawPoints = <Offset>[
       for (final floor in floors)
@@ -431,18 +464,25 @@ class _TwinProjection {
     final maxRawX = rawPoints.map((point) => point.dx).reduce(math.max);
     _minRawY = rawPoints.map((point) => point.dy).reduce(math.min);
     final maxRawY = rawPoints.map((point) => point.dy).reduce(math.max);
-    const padding = 42.0;
+    const padding = 24.0;
+    final rawWidth = math.max(1, maxRawX - _minRawX);
+    final rawHeight = math.max(1, maxRawY - _minRawY);
+    final availableWidth = math.max(1, size.width - padding * 2);
+    final availableHeight = math.max(1, size.height - padding * 2);
     _scale = math.min(
-      (size.width - padding * 2) / math.max(1, maxRawX - _minRawX),
-      (size.height - padding * 2) / math.max(1, maxRawY - _minRawY),
-    );
+          availableWidth / rawWidth,
+          availableHeight / rawHeight,
+        ) *
+        zoom;
+    _offsetX = (size.width - rawWidth * _scale) / 2;
+    _offsetY = (size.height - rawHeight * _scale) / 2;
   }
 
   Offset project(double x, double y, int floor) {
     final raw = _raw(x, y, floor);
     return Offset(
-      42 + (raw.dx - _minRawX) * _scale,
-      42 + (raw.dy - _minRawY) * _scale,
+      _offsetX + (raw.dx - _minRawX) * _scale,
+      _offsetY + (raw.dy - _minRawY) * _scale,
     );
   }
 

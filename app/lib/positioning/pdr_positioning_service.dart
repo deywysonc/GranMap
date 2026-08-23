@@ -20,6 +20,7 @@ class PdrPositioningService implements PositioningService {
       StreamController<PositionSample>.broadcast();
 
   StreamSubscription<SensorSnapshot>? _subscription;
+  bool _running = false;
   late PositionSample _position;
   int _lastSteps = 0;
   DateTime? _lastAnchorAt;
@@ -45,10 +46,19 @@ class PdrPositioningService implements PositioningService {
 
   @override
   Future<void> start() async {
+    if (_running) return;
+    _running = true;
     await _subscription?.cancel();
     _subscription = sensors.snapshots.listen(_onSensor);
-    await sensors.start();
-    _controller.add(_position);
+    try {
+      await sensors.start();
+      _controller.add(_position);
+    } catch (_) {
+      _running = false;
+      await _subscription?.cancel();
+      _subscription = null;
+      rethrow;
+    }
   }
 
   void _onSensor(SensorSnapshot snapshot) {
@@ -104,6 +114,8 @@ class PdrPositioningService implements PositioningService {
 
   @override
   Future<void> stop() async {
+    if (!_running) return;
+    _running = false;
     await _subscription?.cancel();
     _subscription = null;
     await sensors.stop();

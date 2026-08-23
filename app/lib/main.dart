@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/campus_map_repository.dart';
@@ -56,12 +58,19 @@ class _GranMapBootstrapState extends State<GranMapBootstrap> {
   }
 
   Future<CampusMapSnapshot> _initializeApp() async {
-    await Future.wait([
-      AppPreferences.instance.initialize(),
-      AppSession.instance.initialize(),
-      AppRuntimeConfig.instance.initialize(),
-    ]);
-    return _repository.loadCampus();
+    try {
+      await Future.wait([
+        AppPreferences.instance.initialize(),
+        AppSession.instance.initialize(),
+        AppRuntimeConfig.instance.initialize(),
+      ]).timeout(const Duration(seconds: 8));
+    } on TimeoutException {
+      // O mapa interno deve abrir mesmo que um plugin ou a rede não responda.
+    }
+    return _repository.loadCampus().timeout(
+      const Duration(seconds: 7),
+      onTimeout: _repository.loadBundledCampus,
+    );
   }
 
   void _retryInitialization() {
