@@ -148,7 +148,7 @@ Para o servidor ARM64 compartilhado do Web Lab/Coolify, use
 PostGIS para ARM64, aplica limites de CPU/RAM e não ocupa portas públicas do host.
 
 O APK Android atual, separado por arquitetura e validado com assinatura v2,
-está em [deliverables/GranMap-Demo-v1.3.2-arm64-v8a.apk](deliverables/GranMap-Demo-v1.3.2-arm64-v8a.apk).
+está em [deliverables/GranMap-Demo-v1.4.0-arm64-v8a.apk](deliverables/GranMap-Demo-v1.4.0-arm64-v8a.apk).
 Use-o em celulares Android atuais; as variantes ARM de 32 bits e x86_64 também
 estão na mesma pasta. Consulte [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
 antes de distribuir uma versão pública.

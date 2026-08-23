@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/campus_map.dart';
+import '../positioning/gran_presence_service.dart';
+import '../services/external_maps_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_map_canvas.dart';
 import '../widgets/campus_twin_canvas.dart';
@@ -22,9 +26,57 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  final GranPresenceService _presence = GranPresenceService.instance;
+  final ExternalMapsService _externalMaps = const ExternalMapsService();
   int _floor = 0;
   int _view = 0;
   int _cameraReset = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _presence.addListener(_onPresenceChanged);
+  }
+
+  @override
+  void dispose() {
+    _presence.removeListener(_onPresenceChanged);
+    super.dispose();
+  }
+
+  void _onPresenceChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _handleLocationAction() async {
+    final snapshot = _presence.snapshot;
+    if (snapshot.isAway) {
+      final opened = await _externalMaps.openDirectionsToGran();
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir o aplicativo de mapas.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (snapshot.status == GranPresenceStatus.permissionDenied ||
+        snapshot.status == GranPresenceStatus.servicesDisabled) {
+      await _presence.openRequiredSettings();
+      return;
+    }
+    if (snapshot.status == GranPresenceStatus.unavailable ||
+        snapshot.status == GranPresenceStatus.uncertain ||
+        snapshot.status == GranPresenceStatus.checking) {
+      await _presence.refresh();
+    }
+    if (!mounted) return;
+    setState(() => _cameraReset++);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Mapa interno recentralizado.')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -173,14 +225,9 @@ class _MapScreenState extends State<MapScreen> {
           bottom: 188,
           child: _MapSquareButton(
             icon: Icons.my_location_rounded,
-            onTap: () {
-              setState(() => _cameraReset++);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Mapa recentralizado na Entrada Gran.'),
-                ),
-              );
-            },
+            color: _locationTone,
+            tooltip: _locationTooltip,
+            onTap: () => unawaited(_handleLocationAction()),
           ),
         ),
         Positioned(
@@ -231,7 +278,9 @@ class _MapScreenState extends State<MapScreen> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       Text(
-                        '$places locais • $mapAccuracy',
+                        '$places locais • $mapAccuracy\n$_locationSummary',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall
                             ?.copyWith(color: GranMapColors.textMuted),
                       ),
@@ -253,17 +302,50 @@ class _MapScreenState extends State<MapScreen> {
       ],
     );
   }
+
+  String get _locationSummary => switch (_presence.snapshot.status) {
+    GranPresenceStatus.inside => 'Você está na Gran Tietê',
+    GranPresenceStatus.nearby =>
+      '${_presence.snapshot.distanceLabel} da Gran • toque no alvo',
+    GranPresenceStatus.outside =>
+      '${_presence.snapshot.distanceLabel} da Gran • toque para chegar',
+    GranPresenceStatus.permissionDenied => 'Localização sem permissão',
+    GranPresenceStatus.servicesDisabled => 'GPS desligado',
+    GranPresenceStatus.uncertain => 'Confirmando sua posição',
+    GranPresenceStatus.unavailable => 'Posição indisponível',
+    GranPresenceStatus.checking => 'Localizando você…',
+  };
+
+  String get _locationTooltip => _presence.snapshot.isAway
+      ? 'Abrir rota externa até a Gran Tietê'
+      : 'Atualizar minha localização';
+
+  Color get _locationTone => switch (_presence.snapshot.status) {
+    GranPresenceStatus.inside => GranMapColors.mint,
+    GranPresenceStatus.nearby => GranMapColors.sky,
+    GranPresenceStatus.outside => GranMapColors.orange,
+    GranPresenceStatus.permissionDenied ||
+    GranPresenceStatus.servicesDisabled => GranMapColors.amber,
+    _ => GranMapColors.textMuted,
+  };
 }
 
 class _MapSquareButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final Color color;
+  final String? tooltip;
 
-  const _MapSquareButton({required this.icon, required this.onTap});
+  const _MapSquareButton({
+    required this.icon,
+    required this.onTap,
+    this.color = GranMapColors.textMuted,
+    this.tooltip,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
+    final button = Material(
       color: const Color(0xF20A1728),
       borderRadius: BorderRadius.circular(14),
       child: InkWell(
@@ -276,10 +358,11 @@ class _MapSquareButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: GranMapColors.line),
           ),
-          child: Icon(icon, color: GranMapColors.textMuted, size: 21),
+          child: Icon(icon, color: color, size: 21),
         ),
       ),
     );
+    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
   }
 }
 

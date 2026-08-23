@@ -13,6 +13,7 @@ import 'developer_screen.dart';
 import 'edit_profile_screen.dart';
 import 'login_screen.dart';
 import 'notifications_screen.dart';
+import 'route_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final CampusMap campus;
@@ -200,12 +201,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                             _SettingsRow(
-                              icon: Icons.near_me_outlined,
-                              title: 'Sensores durante o uso',
-                              trailing: Switch(
-                                value: preferences.locationEnabled,
-                                activeTrackColor: GranMapColors.orange,
-                                onChanged: preferences.setLocationEnabled,
+                              icon: Icons.sensors_rounded,
+                              title: 'Sensores e localização',
+                              value: 'Ativos no uso',
+                              valueColor: GranMapColors.mint,
+                              onTap: () => _message(
+                                'Movimento, bússola e localização ficam ativos enquanto o GranMap está aberto e pausam ao sair do app.',
                               ),
                             ),
                           ],
@@ -311,12 +312,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     subtitle: Text(
                       poi.floor == 0 ? 'Térreo' : 'Piso ${poi.floor}',
                     ),
+                    trailing: const Icon(
+                      Icons.near_me_rounded,
+                      color: GranMapColors.orange,
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _openFavorite(poi);
+                    },
                   ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _openFavorite(CampusPoi poi) async {
+    await _personal.addHistory(poiId: poi.id, poiName: poi.name);
+    if (!mounted) return;
+    final origin =
+        widget.campus.poiById('entrada_gran') ?? widget.campus.pois.first;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RouteScreen(
+          campus: widget.campus,
+          origin: origin,
+          destination: poi,
+        ),
+      ),
+    );
+    if (mounted) await _load();
   }
 
   void _message(String message) {

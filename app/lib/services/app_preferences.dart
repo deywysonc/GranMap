@@ -32,7 +32,9 @@ class AppPreferences extends ChangeNotifier {
         preferences.getBool('granmap.preferences.accessible_routes'),
       ]);
       _onboardingCompleted = values[0] ?? false;
-      _locationEnabled = values[1] ?? true;
+      // Desde a v1.4 os sensores ficam ativos somente durante o uso do app.
+      // Ignoramos uma desativação persistida por versões anteriores.
+      _locationEnabled = true;
       _highContrast = values[2] ?? false;
       _accessibleRoutes = values[3] ?? false;
     } catch (_) {

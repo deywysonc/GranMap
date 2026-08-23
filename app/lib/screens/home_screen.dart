@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../models/academic.dart';
 import '../models/campus_map.dart';
 import '../models/personal_data.dart';
+import '../positioning/gran_presence_service.dart';
 import '../services/app_session.dart';
+import '../services/external_maps_service.dart';
 import '../services/next_class_service.dart';
 import '../services/personal_data_service.dart';
 import '../services/user_academic_service.dart';
@@ -33,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _nextClass = const NextClassService();
   final _personal = PersonalDataService();
   final _academic = UserAcademicService();
+  final _presence = GranPresenceService.instance;
+  final _externalMaps = const ExternalMapsService();
 
   List<String> _favorites = const [];
   List<NavigationHistoryItem> _history = const [];
@@ -133,7 +137,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _LocationStatus(online: session.backendReachable),
+                  AnimatedBuilder(
+                    animation: _presence,
+                    builder: (context, _) => _LocationStatus(
+                      presence: _presence.snapshot,
+                      online: session.backendReachable,
+                      onAction: _handleLocationAction,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   GranMapFadeSlide(
                     delay: const Duration(milliseconds: 60),
@@ -214,6 +225,28 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
     return result.take(3).toList();
+  }
+
+  Future<void> _handleLocationAction() async {
+    final status = _presence.snapshot.status;
+    if (status == GranPresenceStatus.outside ||
+        status == GranPresenceStatus.nearby) {
+      final opened = await _externalMaps.openDirectionsToGran();
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir o aplicativo de mapas.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (status == GranPresenceStatus.permissionDenied ||
+        status == GranPresenceStatus.servicesDisabled) {
+      await _presence.openRequiredSettings();
+      return;
+    }
+    await _presence.refresh(requestPermission: true);
   }
 }
 
@@ -300,48 +333,166 @@ class _HomeHeader extends StatelessWidget {
 }
 
 class _LocationStatus extends StatelessWidget {
+  final GranPresenceSnapshot presence;
   final bool online;
+  final VoidCallback onAction;
 
-  const _LocationStatus({required this.online});
+  const _LocationStatus({
+    required this.presence,
+    required this.online,
+    required this.onAction,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: GranMapColors.navy,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: GranMapColors.line),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: online ? GranMapColors.mint : GranMapColors.amber,
-              shape: BoxShape.circle,
-            ),
+    final appearance = _appearance();
+    return Material(
+      color: GranMapColors.inkSoft,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: appearance.actionLabel == null ? null : onAction,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: appearance.tone.withValues(alpha: .28)),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              online
-                  ? 'GranMap sincronizado • Térreo'
-                  : 'Mapa offline disponível • Térreo',
-              style: Theme.of(context).textTheme.bodySmall
-                  ?.copyWith(color: GranMapColors.textMuted),
-            ),
+          child: Row(
+            children: [
+              GranMapIconBadge(
+                icon: appearance.icon,
+                color: appearance.tone,
+                size: 38,
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appearance.title,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      appearance.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: GranMapColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (appearance.actionLabel != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      appearance.actionLabel!,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: appearance.tone,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 16,
+                      color: appearance.tone,
+                    ),
+                  ],
+                )
+              else
+                Icon(
+                  online
+                      ? Icons.cloud_done_rounded
+                      : Icons.offline_bolt_rounded,
+                  size: 18,
+                  color: online ? GranMapColors.mint : GranMapColors.amber,
+                ),
+            ],
           ),
-          Icon(
-            online ? Icons.wifi_rounded : Icons.offline_bolt_rounded,
-            size: 16,
-            color: online ? GranMapColors.mint : GranMapColors.amber,
-          ),
-        ],
+        ),
       ),
     );
   }
+
+  _LocationAppearance _appearance() => switch (presence.status) {
+    GranPresenceStatus.inside => const _LocationAppearance(
+      title: 'Você está na Gran Tietê',
+      subtitle: 'Navegação interna e sensores prontos.',
+      icon: Icons.location_on_rounded,
+      tone: GranMapColors.mint,
+    ),
+    GranPresenceStatus.nearby => _LocationAppearance(
+      title: 'Você está perto da Gran Tietê',
+      subtitle: '${presence.distanceLabel} até a entrada.',
+      actionLabel: 'COMO CHEGAR',
+      icon: Icons.directions_walk_rounded,
+      tone: GranMapColors.sky,
+    ),
+    GranPresenceStatus.outside => _LocationAppearance(
+      title: 'Você está fora da Gran Tietê',
+      subtitle: '${presence.distanceLabel} até a faculdade.',
+      actionLabel: 'COMO CHEGAR',
+      icon: Icons.route_rounded,
+      tone: GranMapColors.orange,
+    ),
+    GranPresenceStatus.permissionDenied => const _LocationAppearance(
+      title: 'Localização sem permissão',
+      subtitle: 'Ative para o GranMap entender quando você chegar.',
+      actionLabel: 'ATIVAR',
+      icon: Icons.location_disabled_rounded,
+      tone: GranMapColors.amber,
+    ),
+    GranPresenceStatus.servicesDisabled => const _LocationAppearance(
+      title: 'Localização do celular desligada',
+      subtitle: 'Ligue o GPS para detectar sua chegada.',
+      actionLabel: 'LIGAR GPS',
+      icon: Icons.gps_off_rounded,
+      tone: GranMapColors.amber,
+    ),
+    GranPresenceStatus.uncertain => const _LocationAppearance(
+      title: 'Confirmando sua posição',
+      subtitle: 'A leitura atual ainda não tem precisão suficiente.',
+      actionLabel: 'ATUALIZAR',
+      icon: Icons.location_searching_rounded,
+      tone: GranMapColors.sky,
+    ),
+    GranPresenceStatus.unavailable => const _LocationAppearance(
+      title: 'Posição indisponível',
+      subtitle: 'O mapa interno continua funcionando offline.',
+      actionLabel: 'TENTAR',
+      icon: Icons.signal_wifi_connected_no_internet_4_rounded,
+      tone: GranMapColors.coral,
+    ),
+    GranPresenceStatus.checking => const _LocationAppearance(
+      title: 'Localizando você',
+      subtitle: 'Isso deve levar apenas alguns segundos.',
+      actionLabel: 'ATUALIZAR',
+      icon: Icons.my_location_rounded,
+      tone: GranMapColors.sky,
+    ),
+  };
+}
+
+class _LocationAppearance {
+  final String title;
+  final String subtitle;
+  final String? actionLabel;
+  final IconData icon;
+  final Color tone;
+
+  const _LocationAppearance({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.tone,
+    this.actionLabel,
+  });
 }
 
 class _NextClassCard extends StatelessWidget {

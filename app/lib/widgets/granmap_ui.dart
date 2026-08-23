@@ -69,28 +69,32 @@ class GranMapBrandMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [GranMapColors.orangeLight, GranMapColors.orange],
+    return Semantics(
+      label: 'GranMap — Gran Tietê',
+      image: true,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * .25),
+          boxShadow: [
+            BoxShadow(
+              color: GranMapColors.sky.withValues(alpha: dark ? .20 : .12),
+              blurRadius: size * .38,
+              offset: Offset(0, size * .13),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(size * .32),
-        boxShadow: [
-          BoxShadow(
-            color: GranMapColors.orange.withValues(alpha: .32),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(size * .25),
+          child: Image.asset(
+            'assets/branding/granmap_gt_icon_v1.png',
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            filterQuality: FilterQuality.high,
           ),
-        ],
-      ),
-      child: Icon(
-        Icons.navigation_rounded,
-        color: dark ? Colors.white : GranMapColors.ink,
-        size: size * .52,
+        ),
       ),
     );
   }

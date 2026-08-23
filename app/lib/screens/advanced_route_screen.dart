@@ -73,9 +73,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       (_) => _refreshClosures(),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted &&
-          AppPreferences.instance.locationEnabled &&
-          AppRuntimeConfig.instance.physicalPositioningEnabled) {
+      if (mounted && AppRuntimeConfig.instance.physicalPositioningEnabled) {
         _toggleRealPositioning();
       }
     });
@@ -189,12 +187,6 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       setState(() {
         _positioningNotice =
             'O posicionamento físico está temporariamente indisponível.';
-      });
-      return;
-    }
-    if (!_realPositioning && !AppPreferences.instance.locationEnabled) {
-      setState(() {
-        _positioningNotice = 'Ative “Sensores durante o uso” no Perfil para usar o posicionamento físico.';
       });
       return;
     }

@@ -18,6 +18,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   final LocalStore _store = LocalStore();
   List<Map<String, dynamic>> _items = const [];
   bool _loading = true;
+  bool _marking = false;
   String? _error;
 
   @override
@@ -59,18 +60,37 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _markRead(Map<String, dynamic> item) async {
-    if (item['read'] == true) return;
+    if (item['read'] == true || _marking) return;
     final token = AppSession.instance.token;
     if (token == null) return;
-    await _api.markNotificationRead(token, (item['id'] as num).toInt());
-    await _load();
+    setState(() => _marking = true);
+    try {
+      await _api.markNotificationRead(token, (item['id'] as num).toInt());
+      await _load();
+    } catch (_) {
+      if (mounted) _message('Não foi possível marcar a notificação agora.');
+    } finally {
+      if (mounted) setState(() => _marking = false);
+    }
   }
 
   Future<void> _markAll() async {
+    if (_marking) return;
     final token = AppSession.instance.token;
     if (token == null) return;
-    await _api.markAllNotificationsRead(token);
-    await _load();
+    setState(() => _marking = true);
+    try {
+      await _api.markAllNotificationsRead(token);
+      await _load();
+    } catch (_) {
+      if (mounted) _message('Não foi possível atualizar as notificações.');
+    } finally {
+      if (mounted) setState(() => _marking = false);
+    }
+  }
+
+  void _message(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -81,7 +101,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Atualizações da faculdade'),
         actions: [
           if (_items.any((item) => item['read'] != true))
-            TextButton(onPressed: _markAll, child: const Text('Marcar lidas')),
+            TextButton(
+              onPressed: _marking ? null : _markAll,
+              child: Text(_marking ? 'Atualizando…' : 'Marcar lidas'),
+            ),
         ],
       ),
       body: GranMapBackdrop(

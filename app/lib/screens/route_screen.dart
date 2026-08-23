@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -5,8 +7,10 @@ import '../models/campus_map.dart';
 import '../navigation/navigation_service.dart';
 import '../navigation/navigation_session.dart';
 import '../navigation/route_result.dart';
+import '../positioning/gran_presence_service.dart';
 import '../services/app_preferences.dart';
 import '../services/app_runtime_config.dart';
+import '../services/external_maps_service.dart';
 import '../services/personal_data_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_lens_canvas.dart';
@@ -38,6 +42,8 @@ class RouteScreen extends StatefulWidget {
 class _RouteScreenState extends State<RouteScreen> {
   final _navigation = const NavigationService();
   final _personal = PersonalDataService();
+  final _presence = GranPresenceService.instance;
+  final _externalMaps = const ExternalMapsService();
   RouteResult? _route;
   NavigationSession? _session;
   bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
@@ -50,6 +56,7 @@ class _RouteScreenState extends State<RouteScreen> {
     super.initState();
     _view = widget.initialView.clamp(0, 3);
     if (_view == 3 && !AppRuntimeConfig.instance.arEnabled) _view = 0;
+    _presence.addListener(_changed);
     _configure();
     _loadFavorite();
   }
@@ -58,6 +65,7 @@ class _RouteScreenState extends State<RouteScreen> {
   void dispose() {
     _session?.removeListener(_changed);
     _session?.dispose();
+    _presence.removeListener(_changed);
     _personal.dispose();
     super.dispose();
   }
@@ -136,6 +144,27 @@ class _RouteScreenState extends State<RouteScreen> {
     setState(() => _view = value);
   }
 
+  Future<void> _handlePresenceAction() async {
+    final presence = _presence.snapshot;
+    if (presence.isAway) {
+      final opened = await _externalMaps.openDirectionsToGran();
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir o aplicativo de mapas.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (presence.status == GranPresenceStatus.permissionDenied ||
+        presence.status == GranPresenceStatus.servicesDisabled) {
+      await _presence.openRequiredSettings();
+    } else {
+      await _presence.refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final route = _route;
@@ -191,7 +220,12 @@ class _RouteScreenState extends State<RouteScreen> {
           onPressed: () => Navigator.of(context).pop(),
           icon: const Icon(Icons.close_rounded),
         ),
-        title: const Text('Navegação ativa'),
+        title: Text(
+          _presence.snapshot.isAway &&
+                  session.status != NavigationSessionStatus.ready
+              ? 'Prévia da rota interna'
+              : 'Navegação interna',
+        ),
         actions: [
           Container(
             width: 7,
@@ -280,6 +314,9 @@ class _RouteScreenState extends State<RouteScreen> {
                     favorite: _favorite,
                     onFavorite: _toggleFavorite,
                     onShare: _copyRoute,
+                    presence: _presence.snapshot,
+                    onPresenceAction: () => unawaited(_handlePresenceAction()),
+                    onPreview: session.start,
                     onStart: session.start,
                   )
                 : _ActiveNavigationSheet(
@@ -500,6 +537,9 @@ class _DestinationSheet extends StatelessWidget {
   final VoidCallback onFavorite;
   final VoidCallback onShare;
   final VoidCallback onStart;
+  final VoidCallback onPreview;
+  final VoidCallback onPresenceAction;
+  final GranPresenceSnapshot presence;
 
   const _DestinationSheet({
     required this.destination,
@@ -509,6 +549,9 @@ class _DestinationSheet extends StatelessWidget {
     required this.onFavorite,
     required this.onShare,
     required this.onStart,
+    required this.onPreview,
+    required this.onPresenceAction,
+    required this.presence,
   });
 
   @override
@@ -584,13 +627,128 @@ class _DestinationSheet extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          _ArrivalStatus(presence: presence),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: onStart,
-              icon: const Icon(Icons.near_me_rounded, size: 18),
-              label: const Text('Iniciar navegação'),
+              onPressed: presence.isAtGran ? onStart : onPresenceAction,
+              icon: Icon(
+                presence.isAway
+                    ? Icons.directions_car_filled_rounded
+                    : presence.isAtGran
+                    ? Icons.near_me_rounded
+                    : Icons.my_location_rounded,
+                size: 18,
+              ),
+              label: Text(
+                presence.isAway
+                    ? 'Ir até a Gran Tietê'
+                    : presence.isAtGran
+                    ? 'Iniciar navegação interna'
+                    : 'Confirmar minha localização',
+              ),
+            ),
+          ),
+          if (!presence.isAtGran) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onPreview,
+                icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+                label: const Text('Pré-visualizar rota interna'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ArrivalStatus extends StatelessWidget {
+  final GranPresenceSnapshot presence;
+
+  const _ArrivalStatus({required this.presence});
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, tone, title, subtitle) = switch (presence.status) {
+      GranPresenceStatus.inside => (
+        Icons.check_circle_rounded,
+        GranMapColors.mint,
+        'Você está na Gran Tietê',
+        'A rota interna pode começar agora.',
+      ),
+      GranPresenceStatus.nearby => (
+        Icons.directions_walk_rounded,
+        GranMapColors.sky,
+        'Você está perto da entrada',
+        '${presence.distanceLabel} até a Gran Tietê.',
+      ),
+      GranPresenceStatus.outside => (
+        Icons.route_rounded,
+        GranMapColors.orange,
+        'Primeiro, chegue à Gran Tietê',
+        '${presence.distanceLabel} até a faculdade.',
+      ),
+      GranPresenceStatus.permissionDenied => (
+        Icons.location_disabled_rounded,
+        GranMapColors.amber,
+        'Permita sua localização',
+        'Assim o app sabe quando liberar a navegação interna.',
+      ),
+      GranPresenceStatus.servicesDisabled => (
+        Icons.gps_off_rounded,
+        GranMapColors.amber,
+        'Ligue a localização do celular',
+        'O GPS é usado para detectar sua chegada.',
+      ),
+      GranPresenceStatus.uncertain => (
+        Icons.location_searching_rounded,
+        GranMapColors.sky,
+        'Confirmando sua posição',
+        'A leitura ainda não tem precisão suficiente.',
+      ),
+      GranPresenceStatus.unavailable => (
+        Icons.signal_wifi_connected_no_internet_4_rounded,
+        GranMapColors.coral,
+        'Posição indisponível',
+        'Você ainda pode explorar uma prévia da rota.',
+      ),
+      GranPresenceStatus.checking => (
+        Icons.my_location_rounded,
+        GranMapColors.sky,
+        'Localizando você…',
+        'Aguarde alguns segundos ou atualize.',
+      ),
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: tone.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(13),
+        border: Border.all(color: tone.withValues(alpha: .22)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: tone, size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.labelLarge),
+                const SizedBox(height: 1),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall
+                      ?.copyWith(color: GranMapColors.textMuted),
+                ),
+              ],
             ),
           ),
         ],

@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../data/campus_map_repository.dart';
 import '../models/campus_map.dart';
 import '../positioning/app_sensor_service.dart';
+import '../positioning/gran_presence_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'community_screen.dart';
@@ -40,6 +42,7 @@ class _GranMapShellState extends State<GranMapShell>
   int _index = 0;
   int _requestedRouteView = 0;
   final AppSensorService _sensors = AppSensorService.instance;
+  final GranPresenceService _presence = GranPresenceService.instance;
 
   static const _items = [
     _NavItem(Icons.home_rounded, Icons.home_outlined, 'Início'),
@@ -54,27 +57,29 @@ class _GranMapShellState extends State<GranMapShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     unawaited(_sensors.start());
+    unawaited(_presence.start());
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final foreground = state == AppLifecycleState.resumed;
-    if (foreground ||
-        state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached) {
-      unawaited(_sensors.setForeground(foreground));
-    }
+    unawaited(_sensors.setForeground(foreground));
+    unawaited(_presence.setForeground(foreground));
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_sensors.stop());
+    unawaited(_presence.stop());
     super.dispose();
   }
 
-  void _select(int index) => setState(() => _index = index);
+  void _select(int index) {
+    if (index == _index) return;
+    HapticFeedback.selectionClick();
+    setState(() => _index = index);
+  }
 
   void _requestRouteView(int view) {
     setState(() {
