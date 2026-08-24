@@ -4,13 +4,32 @@ import 'package:path/path.dart' as path;
 import 'package:sqflite/sqflite.dart';
 
 class OfflineDatabase {
-  Database? _database;
+  static Database? _database;
+  static Future<Database>? _openingDatabase;
 
   Future<Database> get _db async {
     final current = _database;
-    if (current != null) return current;
+    if (current != null && current.isOpen) return current;
+
+    final pending = _openingDatabase;
+    if (pending != null) return pending;
+
+    final opening = _openDatabase();
+    _openingDatabase = opening;
+    try {
+      final opened = await opening;
+      _database = opened;
+      return opened;
+    } finally {
+      if (identical(_openingDatabase, opening)) {
+        _openingDatabase = null;
+      }
+    }
+  }
+
+  Future<Database> _openDatabase() async {
     final root = await getDatabasesPath();
-    final opened = await openDatabase(
+    return openDatabase(
       path.join(root, 'granmap_offline.db'),
       version: 2,
       onConfigure: (database) async {
@@ -82,8 +101,6 @@ class OfflineDatabase {
         }
       },
     );
-    _database = opened;
-    return opened;
   }
 
   Future<void> put(String key, String payload) async {
@@ -206,7 +223,9 @@ class OfflineDatabase {
   }
 
   Future<void> close() async {
-    await _database?.close();
+    final current = _database;
     _database = null;
+    _openingDatabase = null;
+    await current?.close();
   }
 }

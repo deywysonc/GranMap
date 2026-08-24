@@ -71,20 +71,40 @@ class _RouteScreenState extends State<RouteScreen> {
   }
 
   Future<void> _loadFavorite() async {
-    final favorites = await _personal.loadFavorites();
-    if (mounted) {
-      setState(() => _favorite = favorites.contains(widget.destination.id));
+    try {
+      final favorites = await _personal.loadFavorites().timeout(
+        const Duration(seconds: 3),
+      );
+      if (mounted) {
+        setState(() => _favorite = favorites.contains(widget.destination.id));
+      }
+    } catch (_) {
+      // A rota continua disponível mesmo sem carregar os favoritos.
     }
   }
 
   Future<void> _toggleFavorite() async {
-    final favorites = await _personal.loadFavorites();
-    final next = await _personal.toggleFavorite(
-      widget.destination.id,
-      favorites,
-    );
-    if (mounted) {
-      setState(() => _favorite = next.contains(widget.destination.id));
+    final previous = _favorite;
+    setState(() => _favorite = !previous);
+    try {
+      final favorites = await _personal.loadFavorites().timeout(
+        const Duration(seconds: 3),
+      );
+      final next = await _personal
+          .toggleFavorite(widget.destination.id, favorites)
+          .timeout(const Duration(seconds: 3));
+      if (mounted) {
+        setState(() => _favorite = next.contains(widget.destination.id));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Favorito marcado; a sincronização será tentada depois.',
+          ),
+        ),
+      );
     }
   }
 

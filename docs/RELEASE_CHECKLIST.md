@@ -2,23 +2,23 @@
 
 ## Versão validada
 
-- aplicativo: `1.4.0+9`;
+- aplicativo: `1.4.1+10`;
 - backend: `0.12.0`;
 - Admin: `0.5.0`;
 - API pública usada pelo APK da demo: `https://granmap.168.119.244.43.sslip.io/api`;
-- APK recomendado: `deliverables/GranMap-Demo-v1.4.0-arm64-v8a.apk`;
+- APK recomendado: `deliverables/GranMap-Demo-v1.4.1-arm64-v8a.apk`;
 - tamanho: 28.185.437 bytes (26,9 MB);
-- SHA-256: `AA3F1ABE1A15101D2E65FB0890E01FB48203DBEACDB202EF096C74E61EB2C5D9`;
+- SHA-256: `B06CB90EFA0C4F33E7970E8002466A62BEF88AAF3CCB223B7BE4CE92115136D8`;
 - download público estável: `https://granmap.168.119.244.43.sslip.io/baixar`.
 
 O APK é assinado corretamente com APK Signature Scheme v2 e usa a chave de
 debug apenas para instalação da demo. A loja exige a chave definitiva da
 instituição e o flavor `production`.
 
-## Verificações concluídas em 23/08/2026
+## Verificações concluídas em 24/08/2026
 
 - `flutter analyze`: aprovado;
-- `flutter test`: 43 testes aprovados;
+- `flutter test`: 45 testes aprovados;
 - backend: 22 testes aprovados;
 - Admin: 3 testes aprovados;
 - `npm audit --omit=dev`: nenhuma vulnerabilidade;

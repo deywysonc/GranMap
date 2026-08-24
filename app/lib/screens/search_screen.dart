@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/campus_map.dart';
@@ -46,8 +48,15 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _loadFavorites() async {
-    final value = await _personal.loadFavorites();
-    if (mounted) setState(() => _favorites = value);
+    try {
+      final value = await _personal.loadFavorites().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => _favorites,
+      );
+      if (mounted) setState(() => _favorites = value);
+    } catch (_) {
+      // A busca e as rotas continuam disponíveis sem favoritos.
+    }
   }
 
   void _apply() {
@@ -76,8 +85,8 @@ class _SearchScreenState extends State<SearchScreen> {
   CampusPoi get _origin =>
       widget.campus.poiById('entrada_gran') ?? widget.campus.pois.first;
 
-  Future<void> _open(CampusPoi poi) async {
-    await _personal.addHistory(poiId: poi.id, poiName: poi.name);
+  void _open(CampusPoi poi) {
+    unawaited(_rememberDestination(poi));
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -92,9 +101,41 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Future<void> _toggle(CampusPoi poi) async {
-    final value = await _personal.toggleFavorite(poi.id, _favorites);
-    if (mounted) setState(() => _favorites = value);
+  Future<void> _rememberDestination(CampusPoi poi) async {
+    try {
+      await _personal
+          .addHistory(poiId: poi.id, poiName: poi.name)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // Abrir uma rota tem prioridade sobre atualizar o histórico.
+    }
+  }
+
+  void _toggle(CampusPoi poi) {
+    final previous = _favorites;
+    final next = previous.contains(poi.id)
+        ? previous.where((id) => id != poi.id).toList(growable: false)
+        : [...previous, poi.id];
+    setState(() => _favorites = next);
+    unawaited(_persistFavorite(poi.id, previous));
+  }
+
+  Future<void> _persistFavorite(String poiId, List<String> previous) async {
+    try {
+      final saved = await _personal
+          .toggleFavorite(poiId, previous)
+          .timeout(const Duration(seconds: 3));
+      if (mounted) setState(() => _favorites = saved);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Favorito atualizado; a sincronização será tentada depois.',
+          ),
+        ),
+      );
+    }
   }
 
   @override

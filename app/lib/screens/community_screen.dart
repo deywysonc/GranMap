@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../community/community_models.dart';
@@ -20,6 +22,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   CommunitySnapshot? _snapshot;
   bool _loading = true;
+  String? _loadError;
   String? _busyProposalId;
 
   @override
@@ -42,13 +45,35 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _reload({bool showProgress = true}) async {
-    if (showProgress) setState(() => _loading = true);
-    final snapshot = await _service.load();
-    if (!mounted) return;
-    setState(() {
-      _snapshot = snapshot;
-      _loading = false;
-    });
+    if (showProgress && mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+      });
+    }
+    try {
+      final snapshot = await _service.load().timeout(
+        const Duration(seconds: 8),
+      );
+      if (!mounted) return;
+      setState(() {
+        _snapshot = snapshot;
+        _loading = false;
+        _loadError = null;
+      });
+    } on TimeoutException {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'A sincronização demorou mais que o esperado.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'Não foi possível consultar as atualizações agora.';
+      });
+    }
   }
 
   Future<void> _openCreateProposal() async {
@@ -157,9 +182,37 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   ),
                   if (_loading) ...[
                     const SizedBox(height: 18),
-                    const LinearProgressIndicator(),
+                    const GranMapSurface(
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2.4),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(child: Text('Sincronizando atualizações…')),
+                        ],
+                      ),
+                    ),
                   ],
-                  if (!_loading && contributions.isEmpty) ...[
+                  if (!_loading && _loadError != null) ...[
+                    const SizedBox(height: 18),
+                    GranMapEmptyState(
+                      icon: Icons.cloud_off_rounded,
+                      title: 'Comunidade indisponível agora',
+                      message:
+                          '$_loadError O mapa e as rotas continuam funcionando normalmente.',
+                      action: OutlinedButton.icon(
+                        onPressed: _reload,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Tentar novamente'),
+                      ),
+                    ),
+                  ],
+                  if (!_loading &&
+                      _loadError == null &&
+                      contributions.isEmpty) ...[
                     const SizedBox(height: 18),
                     const GranMapEmptyState(
                       icon: Icons.forum_rounded,
@@ -429,7 +482,7 @@ class _ContributionCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                   child: LinearProgressIndicator(
                     value: contribution.totalVotes == 0
-                        ? null
+                        ? 0
                         : contribution.confidence,
                     color: tone,
                   ),

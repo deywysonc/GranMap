@@ -1,11 +1,26 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:granmap/models/campus_map.dart';
+import 'package:granmap/screens/home_screen.dart';
 import 'package:granmap/screens/map_screen.dart';
+import 'package:granmap/screens/route_screen.dart';
+import 'package:granmap/screens/search_screen.dart';
 import 'package:granmap/theme/granmap_theme.dart';
 import 'package:granmap/widgets/granmap_ui.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferencesAsyncPlatform.instance =
+        InMemorySharedPreferencesAsync.empty();
+  });
+
+  tearDown(() {
+    SharedPreferencesAsyncPlatform.instance = null;
+  });
+
   testWidgets('GranMapSurface preserva tinta e interação de ListTile', (
     tester,
   ) async {
@@ -60,6 +75,67 @@ void main() {
     await tester.pump();
     expect(requestedView, 3);
   });
+
+  testWidgets('card de destino abre a rota sem esperar o histórico', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      final observer = _RecordingNavigatorObserver();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: GranMapTheme.dark,
+          navigatorObservers: [observer],
+          home: Scaffold(body: SearchScreen(campus: _campus())),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Entrada Gran'));
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(observer.pushes, hasLength(2));
+      expect(find.byType(RouteScreen, skipOffstage: false), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 3));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('visitante não vê carregamento acadêmico infinito', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: GranMapTheme.dark,
+          home: Scaffold(body: HomeScreen(campus: _campus())),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 700));
+
+      expect(find.text('Entre para ver sua próxima aula'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 3));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+}
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  final List<Route<dynamic>> pushes = [];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushes.add(route);
+    super.didPush(route, previousRoute);
+  }
 }
 
 CampusMap _campus() => const CampusMap(

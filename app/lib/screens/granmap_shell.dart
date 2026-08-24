@@ -41,6 +41,7 @@ class _GranMapShellState extends State<GranMapShell>
     with WidgetsBindingObserver {
   int _index = 0;
   int _requestedRouteView = 0;
+  final Set<int> _visitedPages = {0};
   final AppSensorService _sensors = AppSensorService.instance;
   final GranPresenceService _presence = GranPresenceService.instance;
 
@@ -78,36 +79,50 @@ class _GranMapShellState extends State<GranMapShell>
   void _select(int index) {
     if (index == _index) return;
     HapticFeedback.selectionClick();
-    setState(() => _index = index);
+    setState(() {
+      _visitedPages.add(index);
+      _index = index;
+    });
   }
 
   void _requestRouteView(int view) {
     setState(() {
       _requestedRouteView = view;
+      _visitedPages.add(1);
       _index = 1;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      HomeScreen(
-        campus: widget.campus,
-        blockedEdgeIds: widget.blockedEdgeIds,
-        onSearchRequested: () => _select(1),
-      ),
-      SearchScreen(
-        campus: widget.campus,
-        blockedEdgeIds: widget.blockedEdgeIds,
-        initialRouteView: _requestedRouteView,
-      ),
-      MapScreen(
-        campus: widget.campus,
-        onSearchRequested: () => _select(1),
-        onRouteModeRequested: _requestRouteView,
-      ),
-      const CommunityScreen(),
-      ProfileScreen(campus: widget.campus),
+    final pages = <Widget>[
+      _visitedPages.contains(0)
+          ? HomeScreen(
+              campus: widget.campus,
+              blockedEdgeIds: widget.blockedEdgeIds,
+              onSearchRequested: () => _select(1),
+            )
+          : const SizedBox.shrink(),
+      _visitedPages.contains(1)
+          ? SearchScreen(
+              campus: widget.campus,
+              blockedEdgeIds: widget.blockedEdgeIds,
+              initialRouteView: _requestedRouteView,
+            )
+          : const SizedBox.shrink(),
+      _visitedPages.contains(2)
+          ? MapScreen(
+              campus: widget.campus,
+              onSearchRequested: () => _select(1),
+              onRouteModeRequested: _requestRouteView,
+            )
+          : const SizedBox.shrink(),
+      _visitedPages.contains(3)
+          ? const CommunityScreen()
+          : const SizedBox.shrink(),
+      _visitedPages.contains(4)
+          ? ProfileScreen(campus: widget.campus)
+          : const SizedBox.shrink(),
     ];
 
     return Scaffold(

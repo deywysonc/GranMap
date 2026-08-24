@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/academic.dart';
@@ -65,29 +67,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _reloadAll() async {
-    if (mounted) setState(() => _loadingAcademic = true);
-    final values = await Future.wait<dynamic>([
-      _personal.loadFavorites(),
-      _personal.loadHistory(),
-      _academic.load(),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      _favorites = values[0] as List<String>;
-      _history = values[1] as List<NavigationHistoryItem>;
-      _snapshot = values[2] as AcademicSnapshot;
-      _loadingAcademic = false;
-    });
+    final loggedIn = AppSession.instance.isLoggedIn;
+    if (mounted) setState(() => _loadingAcademic = loggedIn);
+    try {
+      final values = await Future.wait<dynamic>([
+        _personal.loadFavorites().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => _favorites,
+        ),
+        _personal.loadHistory().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => _history,
+        ),
+        _academic.load().timeout(
+          const Duration(seconds: 6),
+          onTimeout: () => AcademicSnapshot(
+            classes: const [],
+            source: AcademicDataSource.none,
+            message: loggedIn
+                ? 'A grade demorou para responder. Puxe a tela para tentar novamente.'
+                : 'Entre no GranMap para carregar sua grade acadêmica.',
+          ),
+        ),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _favorites = values[0] as List<String>;
+        _history = values[1] as List<NavigationHistoryItem>;
+        _snapshot = values[2] as AcademicSnapshot;
+        _loadingAcademic = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _snapshot ??= AcademicSnapshot(
+          classes: const [],
+          source: AcademicDataSource.none,
+          message: loggedIn
+              ? 'Não foi possível atualizar a grade agora.'
+              : 'Entre no GranMap para carregar sua grade acadêmica.',
+        );
+        _loadingAcademic = false;
+      });
+    }
   }
 
   CampusPoi get _origin =>
       widget.campus.poiById('entrada_gran') ?? widget.campus.pois.first;
 
-  Future<void> _openRoute(CampusPoi destination) async {
-    await _personal.addHistory(
-      poiId: destination.id,
-      poiName: destination.name,
-    );
+  void _openRoute(CampusPoi destination) {
+    unawaited(_rememberDestination(destination));
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -99,6 +128,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _rememberDestination(CampusPoi destination) async {
+    try {
+      await _personal
+          .addHistory(poiId: destination.id, poiName: destination.name)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // A rota nunca deve depender da persistência do histórico.
+    }
   }
 
   @override
@@ -517,7 +556,19 @@ class _NextClassCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return const GranMapSurface(child: LinearProgressIndicator());
+      return const GranMapSurface(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2.4),
+            ),
+            SizedBox(width: 12),
+            Expanded(child: Text('Atualizando sua próxima aula…')),
+          ],
+        ),
+      );
     }
     if (!userLoggedIn) {
       return GranMapSurface(

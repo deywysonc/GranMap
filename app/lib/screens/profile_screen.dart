@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/campus_map.dart';
@@ -55,15 +57,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
-    final values = await Future.wait<dynamic>([
-      _personal.loadFavorites(),
-      _personal.loadHistory(),
-    ]);
-    if (!mounted) return;
-    setState(() {
-      _favorites = values[0] as List<String>;
-      _history = values[1] as List<NavigationHistoryItem>;
-    });
+    try {
+      final values = await Future.wait<dynamic>([
+        _personal.loadFavorites().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => _favorites,
+        ),
+        _personal.loadHistory().timeout(
+          const Duration(seconds: 3),
+          onTimeout: () => _history,
+        ),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _favorites = values[0] as List<String>;
+        _history = values[1] as List<NavigationHistoryItem>;
+      });
+    } catch (_) {
+      // O perfil permanece utilizável mesmo se o armazenamento estiver ocupado.
+    }
   }
 
   @override
@@ -329,7 +341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _openFavorite(CampusPoi poi) async {
-    await _personal.addHistory(poiId: poi.id, poiName: poi.name);
+    unawaited(_rememberFavorite(poi));
     if (!mounted) return;
     final origin =
         widget.campus.poiById('entrada_gran') ?? widget.campus.pois.first;
@@ -343,6 +355,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     if (mounted) await _load();
+  }
+
+  Future<void> _rememberFavorite(CampusPoi poi) async {
+    try {
+      await _personal
+          .addHistory(poiId: poi.id, poiName: poi.name)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {}
   }
 
   void _message(String message) {
