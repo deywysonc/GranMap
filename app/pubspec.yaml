@@ -1,7 +1,7 @@
 name: granmap
 description: "GranMap - Navegação indoor inteligente da Gran Tietê."
 publish_to: 'none'
-version: 1.4.1+10
+version: 1.6.6+18
 
 environment:
   sdk: ^3.13.0
@@ -31,12 +31,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/maps/gran_tiete_upper_floorplan_v11.json
+    - assets/maps/gran_tiete_floorplan_v12.json
     - assets/branding/granmap_gt_icon_v1.png
-    - assets/walkthroughs/entrada_gran/
-    - assets/walkthroughs/rampa_superior/
-    - assets/walkthroughs/agronomia/
-    - assets/walkthroughs/entrada_tyto/
 
 flutter_launcher_icons:
   android: true

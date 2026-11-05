@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../community/community_models.dart';
+import '../config/api_config.dart';
 import '../models/academic.dart';
 import '../models/personal_data.dart';
 import '../models/user.dart';
@@ -31,14 +32,42 @@ class LocalStore {
           defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS);
 
-  Future<void> _write(String key, String value) =>
-      _usesDatabase ? _database.put(key, value) : _prefs.setString(key, value);
+  Future<void> _write(String key, String value) async {
+    try {
+      await _prefs.setString(key, value);
+    } catch (_) {}
 
-  Future<String?> _read(String key) =>
-      _usesDatabase ? _database.read(key) : _prefs.getString(key);
+    if (_usesDatabase) {
+      try {
+        await _database.put(key, value);
+      } catch (_) {}
+    }
+  }
 
-  Future<void> _remove(String key) =>
-      _usesDatabase ? _database.remove(key) : _prefs.remove(key);
+  Future<String?> _read(String key) async {
+    if (_usesDatabase) {
+      try {
+        final val = await _database.read(key);
+        if (val != null) return val;
+      } catch (_) {}
+    }
+    try {
+      return await _prefs.getString(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _remove(String key) async {
+    try {
+      await _prefs.remove(key);
+    } catch (_) {}
+    if (_usesDatabase) {
+      try {
+        await _database.remove(key);
+      } catch (_) {}
+    }
+  }
 
   Future<void> saveSession(String token, AppUser user) async {
     await _secureSession.writeToken(token);
@@ -188,6 +217,21 @@ class LocalStore {
     }
   }
 
+  Future<FavoriteState> readFavoriteState(String scope) async {
+    final raw = await _read(_scopeKey('favorites.state', scope));
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        return FavoriteState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      } catch (_) {
+        // Recupera favoritos guardados antes da fila de sincronização.
+      }
+    }
+    return FavoriteState(ids: await readFavorites(scope));
+  }
+
+  Future<void> saveFavoriteState(String scope, FavoriteState state) =>
+      _write(_scopeKey('favorites.state', scope), jsonEncode(state.toJson()));
+
   Future<List<NavigationHistoryItem>> readHistory(String scope) async {
     final raw = await _read(_scopeKey('history', scope));
     if (raw == null || raw.isEmpty) return <NavigationHistoryItem>[];
@@ -224,6 +268,91 @@ class LocalStore {
       return <RoomChangeContribution>[];
     }
   }
+
+  Future<CommunityState> readCommunityState(
+    String scope, {
+    required String backend,
+  }) async {
+    final key = _scopeKey(
+      'community.state.v1.${Uri.encodeComponent(backend)}',
+      scope,
+    );
+    final raw = await _read(key);
+    if (raw != null && raw.isNotEmpty) {
+      // Corruption is surfaced; silently treating it as an empty outbox loses
+      // previously accepted offline work on the next write.
+      return CommunityState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+    }
+    if (backend.replaceFirst(RegExp(r'/+$'), '') !=
+        ApiConfig.baseUrl.replaceFirst(RegExp(r'/+$'), '')) {
+      // Legacy records did not record their server. Only the installation's
+      // configured backend may claim them; never replay them on a test/other API.
+      const empty = CommunityState();
+      await saveCommunityState(scope, empty, backend: backend);
+      return empty;
+    }
+    final proposalRaw = await _read(_scopeKey('community.proposals', scope));
+    final contributions = proposalRaw == null || proposalRaw.isEmpty
+        ? <RoomChangeContribution>[]
+        : (jsonDecode(proposalRaw) as List<dynamic>)
+              .map(
+                (item) => RoomChangeContribution.fromJson(
+                  Map<String, dynamic>.from(item as Map),
+                ),
+              )
+              .toList();
+    final List<Map<String, dynamic>> operations;
+    if (_usesDatabase) {
+      operations = await _database.readOutbox(scope);
+    } else {
+      final queueRaw = await _prefs.getString(
+        _scopeKey('community.queue', scope),
+      );
+      operations = queueRaw == null || queueRaw.isEmpty
+          ? <Map<String, dynamic>>[]
+          : (jsonDecode(queueRaw) as List<dynamic>)
+                .map((item) => Map<String, dynamic>.from(item as Map))
+                .toList();
+    }
+    final migratedOperations = <Map<String, dynamic>>[];
+    final voteVersions = <String, int>{};
+    for (var index = 0; index < operations.length; index++) {
+      final operation = Map<String, dynamic>.from(operations[index]);
+      final id =
+          operation['operation_id'] ??
+          'legacy-$index-${operation['idempotency_key'] ?? operation['local_id'] ?? 'operation'}';
+      operation['operation_id'] = id;
+      operation['idempotency_key'] ??= id;
+      if (operation['type'] == 'vote') {
+        final version =
+            (operation['intent_version'] as num?)?.toInt() ??
+            DateTime.now().microsecondsSinceEpoch + index;
+        operation['intent_version'] = version;
+        final proposalId = operation['proposal_id'].toString();
+        if (version > (voteVersions[proposalId] ?? 0)) {
+          voteVersions[proposalId] = version;
+        }
+      }
+      migratedOperations.add(operation);
+    }
+    final migrated = CommunityState(
+      contributions: contributions,
+      operations: migratedOperations,
+      voteVersions: voteVersions,
+    );
+    await saveCommunityState(scope, migrated, backend: backend);
+    // Keep both legacy records intact so migration is recoverable.
+    return migrated;
+  }
+
+  Future<void> saveCommunityState(
+    String scope,
+    CommunityState state, {
+    required String backend,
+  }) => _write(
+    _scopeKey('community.state.v1.${Uri.encodeComponent(backend)}', scope),
+    jsonEncode(state.toJson()),
+  );
 
   Future<void> saveCachedProposals(
     String scope,

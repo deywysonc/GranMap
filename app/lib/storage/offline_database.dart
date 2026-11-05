@@ -33,8 +33,12 @@ class OfflineDatabase {
       path.join(root, 'granmap_offline.db'),
       version: 2,
       onConfigure: (database) async {
-        await database.execute('PRAGMA foreign_keys = ON');
-        await database.execute('PRAGMA journal_mode = WAL');
+        try {
+          await database.execute('PRAGMA foreign_keys = ON');
+        } catch (_) {}
+        try {
+          await database.rawQuery('PRAGMA journal_mode = WAL');
+        } catch (_) {}
       },
       onCreate: (database, version) async {
         await database.execute('''
