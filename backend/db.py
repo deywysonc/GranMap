@@ -376,6 +376,9 @@ def migrate_schema(connection: sqlite3.Connection):
         "TEXT",
     )
     _add_column_if_missing(connection, "votes", "voter_user_id", "INTEGER")
+    _add_column_if_missing(
+        connection, "votes", "intent_version", "INTEGER NOT NULL DEFAULT 0"
+    )
     _add_column_if_missing(connection, "schedules", "subject_id", "INTEGER")
     _add_column_if_missing(connection, "schedules", "group_id", "INTEGER")
     connection.execute(

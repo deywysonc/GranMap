@@ -22,23 +22,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   static const _pages = [
     _OnboardingPage(
       icon: Icons.route_rounded,
-      eyebrow: 'ENCONTRE SEU CAMINHO',
-      title: 'Da entrada até sua sala',
-      description: 'Pesquise qualquer ambiente, escolha uma rota e acompanhe a mudança de corredor ou piso.',
+      eyebrow: 'MAPA E ROTAS',
+      title: 'Encontre salas e setores',
+      description:
+          'Pesquise salas, laboratórios e serviços da Gran Tietê e veja o caminho entre os pisos.',
       color: GranMapColors.orange,
     ),
     _OnboardingPage(
-      icon: Icons.my_location_rounded,
-      eyebrow: 'LOCALIZAÇÃO HONESTA',
-      title: 'Confiança antes da precisão',
-      description: 'O GPS identifica se você está fora, perto ou dentro da Gran Tietê. Movimento e bússola ficam ativos durante o uso; o app sempre informa o nível de confiança.',
+      icon: Icons.calendar_today_rounded,
+      eyebrow: 'GRADE E FAVORITOS',
+      title: 'Sua rotina sempre à mão',
+      description:
+          'Consulte horários de aula, salve locais frequentes e acompanhe avisos de troca de sala.',
       color: GranMapColors.sky,
     ),
     _OnboardingPage(
-      icon: Icons.offline_bolt_rounded,
-      eyebrow: 'PRONTO PARA CONEXÃO RUIM',
-      title: 'O mapa continua com você',
-      description: 'O núcleo funciona offline e sincroniza favoritos e contribuições quando a conexão voltar.',
+      icon: Icons.offline_pin_rounded,
+      eyebrow: 'ACESSO OFFLINE',
+      title: 'Mapa salvo no aparelho',
+      description:
+          'O mapa dos dois pisos continua acessível mesmo com sinal fraco pelos corredores.',
       color: GranMapColors.mint,
     ),
   ];

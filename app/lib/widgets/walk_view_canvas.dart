@@ -117,11 +117,13 @@ class _WalkViewCanvasState extends State<WalkViewCanvas> {
                   children: [
                     const Icon(Icons.swipe_rounded, size: 18),
                     const SizedBox(width: 7),
-                    Text(
-                      'Arraste para olhar • toque duplo para centralizar',
-                      style: Theme.of(context).textTheme.labelSmall,
+                    Expanded(
+                      child: Text(
+                        'Arraste para olhar • toque duplo para centralizar',
+                        maxLines: 2,
+                        style: Theme.of(context).textTheme.labelSmall,
+                      ),
                     ),
-                    const Spacer(),
                     if (_lookOffsetDegrees.abs() > 1)
                       TextButton(
                         onPressed: () => setState(() => _lookOffsetDegrees = 0),

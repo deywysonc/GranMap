@@ -6,7 +6,7 @@ from room_catalog import LEGACY_ROOM_MAP, ROOMS
 
 
 ROOT = Path(__file__).resolve().parents[1]
-MAP_PATH = ROOT / "app" / "assets" / "maps" / "gran_tiete_upper_floorplan_v11.json"
+MAP_PATH = ROOT / "app" / "assets" / "maps" / "gran_tiete_floorplan_v12.json"
 
 
 class MapAlignmentTest(unittest.TestCase):

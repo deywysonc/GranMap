@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/campus_map.dart';
+import '../services/app_session.dart';
 import '../services/personal_data_service.dart';
 import '../services/search_service.dart';
 import '../theme/granmap_theme.dart';
@@ -13,12 +14,16 @@ class SearchScreen extends StatefulWidget {
   final CampusMap campus;
   final Set<String> blockedEdgeIds;
   final int initialRouteView;
+  final PersonalDataService? personalDataService;
+  final AppSession? session;
 
   const SearchScreen({
     super.key,
     required this.campus,
     this.blockedEdgeIds = const {},
     this.initialRouteView = 0,
+    this.personalDataService,
+    this.session,
   });
 
   @override
@@ -28,14 +33,22 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final _controller = TextEditingController();
   final _search = const SearchService();
-  final _personal = PersonalDataService();
+  late final PersonalDataService _personal;
+  late final AppSession _session;
   List<CampusPoi> _results = const [];
   List<String> _favorites = const [];
   String _filter = 'all';
+  late String _sessionScope;
+  int _favoritesGeneration = 0;
 
   @override
   void initState() {
     super.initState();
+    _session = widget.session ?? AppSession.instance;
+    _personal =
+        widget.personalDataService ?? PersonalDataService(session: _session);
+    _sessionScope = _currentSessionScope;
+    _session.addListener(_sessionChanged);
     _results = widget.campus.pois;
     _loadFavorites();
   }
@@ -43,19 +56,50 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     _controller.dispose();
-    _personal.dispose();
+    _session.removeListener(_sessionChanged);
+    if (widget.personalDataService == null) _personal.dispose();
     super.dispose();
   }
 
+  String get _currentSessionScope =>
+      '${_session.storageScope}|${_session.token}';
+
+  void _sessionChanged() {
+    if (!mounted || _currentSessionScope == _sessionScope) return;
+    setState(() {
+      _sessionScope = _currentSessionScope;
+      _favorites = const [];
+    });
+    _loadFavorites();
+  }
+
+  bool _isCurrentFavorites(int generation, String scope) =>
+      mounted &&
+      generation == _favoritesGeneration &&
+      scope == _currentSessionScope;
+
   Future<void> _loadFavorites() async {
+    final generation = ++_favoritesGeneration;
+    final scope = _currentSessionScope;
+    try {
+      final cached = await _personal.loadCachedFavorites().timeout(
+        const Duration(seconds: 2),
+      );
+      if (!_isCurrentFavorites(generation, scope)) return;
+      setState(() => _favorites = cached);
+    } catch (_) {
+      // A sincronização ainda pode recuperar os favoritos quando o cache falha.
+    }
+    if (!_isCurrentFavorites(generation, scope)) return;
     try {
       final value = await _personal.loadFavorites().timeout(
-        const Duration(seconds: 3),
-        onTimeout: () => _favorites,
+        const Duration(seconds: 6),
       );
-      if (mounted) setState(() => _favorites = value);
+      if (_isCurrentFavorites(generation, scope)) {
+        setState(() => _favorites = value);
+      }
     } catch (_) {
-      // A busca e as rotas continuam disponíveis sem favoritos.
+      // Mantém os favoritos locais enquanto a sincronização está indisponível.
     }
   }
 
@@ -66,7 +110,8 @@ class _SearchScreenState extends State<SearchScreen> {
           .where((poi) {
             return switch (_filter) {
               'rooms' => poi.type == 'classroom' || poi.type == 'auditorium',
-              'labs' => poi.type == 'laboratory',
+              'labs' =>
+                poi.type == 'laboratory' || poi.type == 'project_laboratory',
               'services' => const {
                 'library',
                 'finance',
@@ -95,7 +140,9 @@ class _SearchScreenState extends State<SearchScreen> {
           origin: _origin,
           destination: poi,
           blockedEdgeIds: widget.blockedEdgeIds,
-          initialView: widget.initialRouteView,
+          initialView: widget.initialRouteView == 2
+              ? 0
+              : widget.initialRouteView,
         ),
       ),
     );
@@ -112,22 +159,32 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _toggle(CampusPoi poi) {
+    if (_sessionScope != _currentSessionScope) _sessionChanged();
+    final generation = ++_favoritesGeneration;
+    final scope = _currentSessionScope;
     final previous = _favorites;
     final next = previous.contains(poi.id)
         ? previous.where((id) => id != poi.id).toList(growable: false)
         : [...previous, poi.id];
     setState(() => _favorites = next);
-    unawaited(_persistFavorite(poi.id, previous));
+    unawaited(_persistFavorite(poi.id, previous, generation, scope));
   }
 
-  Future<void> _persistFavorite(String poiId, List<String> previous) async {
+  Future<void> _persistFavorite(
+    String poiId,
+    List<String> previous,
+    int generation,
+    String scope,
+  ) async {
     try {
       final saved = await _personal
           .toggleFavorite(poiId, previous)
           .timeout(const Duration(seconds: 3));
-      if (mounted) setState(() => _favorites = saved);
+      if (_isCurrentFavorites(generation, scope)) {
+        setState(() => _favorites = saved);
+      }
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || !_isCurrentFavorites(generation, scope)) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -154,7 +211,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   'Buscar',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
-                if (widget.initialRouteView >= 2) ...[
+                if (widget.initialRouteView == 3) ...[
                   const SizedBox(height: 12),
                   GranMapSurface(
                     padding: const EdgeInsets.symmetric(
@@ -169,16 +226,14 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          widget.initialRouteView == 2
-                              ? Icons.directions_walk_rounded
-                              : Icons.view_in_ar_rounded,
+                        const Icon(
+                          Icons.view_in_ar_rounded,
                           color: GranMapColors.orange,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Escolha o destino para abrir o modo ${widget.initialRouteView == 2 ? 'Walk' : 'AR'}.',
+                            'Escolha o destino para navegar com a câmera (AR).',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
@@ -343,7 +398,7 @@ class _SearchResultCard extends StatelessWidget {
                 Text(poi.name, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 2),
                 Text(
-                  '${_typeLabel(poi.type)} • ${poi.floor == 0 ? 'Térreo' : 'Piso ${poi.floor}'}${poi.sector.isEmpty ? '' : ' • ${poi.sector}'}',
+                  '${_typeLabel(poi.type)} • ${poi.floor == 0 ? 'Térreo' : poi.floor == 1 ? 'Superior' : 'Piso ${poi.floor}'}${poi.sector.isEmpty ? '' : ' • ${poi.sector}'}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.bodySmall
@@ -352,21 +407,13 @@ class _SearchResultCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            width: 6,
-            height: 6,
-            decoration: const BoxDecoration(
-              color: GranMapColors.mint,
-              shape: BoxShape.circle,
-            ),
-          ),
           IconButton(
             tooltip: favorite ? 'Remover dos favoritos' : 'Favoritar',
             onPressed: onFavorite,
             icon: Icon(
               favorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-              color: favorite ? GranMapColors.orange : GranMapColors.orange,
-              size: 18,
+              color: favorite ? GranMapColors.orange : GranMapColors.textMuted,
+              size: 19,
             ),
           ),
           IconButton(
@@ -385,24 +432,27 @@ class _SearchResultCard extends StatelessWidget {
 }
 
 String _typeLabel(String type) => switch (type) {
-  'classroom' => 'Sala acadêmica',
-  'laboratory' => 'Laboratório',
-  'administration' => 'Administrativo',
-  'library' => 'Serviços',
-  'finance' => 'Administrativo',
-  'restroom' => 'Serviços',
-  'cafeteria' => 'Alimentação',
+  'classroom' => 'Sala',
+  'auditorium' => 'Auditório',
+  'laboratory' || 'project_laboratory' => 'Laboratório',
+  'administration' => 'Secretaria',
+  'library' => 'Biblioteca',
+  'finance' => 'Financeiro',
+  'restroom' => 'Banheiros',
+  'cafeteria' => 'Lanchonete',
+  'court' => 'Quadra',
   'entrance' || 'upper_entrance' => 'Entrada',
   _ => 'Local',
 };
 
 IconData _icon(String type) => switch (type) {
-  'laboratory' => Icons.science_outlined,
+  'laboratory' || 'project_laboratory' => Icons.science_outlined,
   'library' => Icons.menu_book_rounded,
-  'finance' => Icons.star_outline_rounded,
+  'finance' => Icons.payments_outlined,
   'restroom' => Icons.wc_rounded,
   'cafeteria' => Icons.local_cafe_outlined,
   'administration' => Icons.apartment_rounded,
+  'court' => Icons.sports_basketball_outlined,
   'entrance' || 'upper_entrance' => Icons.login_rounded,
   _ => Icons.location_on_outlined,
 };

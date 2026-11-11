@@ -56,7 +56,7 @@ class _AnchorScannerSheetState extends State<AnchorScannerSheet> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Reancorar posição',
+                      'Confirmar localização',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -91,7 +91,7 @@ class _AnchorScannerSheetState extends State<AnchorScannerSheet> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Aponte para uma placa QR oficial do GranMap. O código não precisa conter sua localização: ele referencia uma âncora versionada no servidor.',
+                'Aponte a câmera para uma placa QR do GranMap para confirmar em qual local do campus você está.',
                 textAlign: TextAlign.center,
               ),
             ),

@@ -1,3 +1,34 @@
+class FavoriteState {
+  final List<String> ids;
+  final Map<String, bool> pending;
+  final int revision;
+
+  const FavoriteState({
+    this.ids = const [],
+    this.pending = const {},
+    this.revision = 0,
+  });
+
+  factory FavoriteState.fromJson(Map<String, dynamic> json) => FavoriteState(
+    ids: (json['ids'] as List<dynamic>? ?? const [])
+        .whereType<String>()
+        .toSet()
+        .toList(),
+    pending: {
+      for (final entry
+          in (json['pending'] as Map<String, dynamic>? ?? {}).entries)
+        if (entry.value is bool) entry.key: entry.value as bool,
+    },
+    revision: (json['revision'] as num?)?.toInt() ?? 0,
+  );
+
+  Map<String, dynamic> toJson() => {
+    'ids': ids,
+    'pending': pending,
+    'revision': revision,
+  };
+}
+
 class NavigationHistoryItem {
   final String poiId;
   final String poiName;

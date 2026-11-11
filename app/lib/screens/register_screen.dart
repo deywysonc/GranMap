@@ -20,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
-  final _group = TextEditingController(text: 'EC4A');
+  final _group = TextEditingController();
 
   List<String> _courses = const [];
   String? _course;
@@ -173,13 +173,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const GranMapBrandMark(size: 60),
                       const SizedBox(height: 18),
                       Text(
-                        'Crie seu espaço na faculdade.',
+                        'Crie sua conta',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        'Leva menos de um minuto.',
+                        'Para acompanhar suas aulas, favoritos e avisos de sala.',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
@@ -192,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             const _FormSection(
                               icon: Icons.person_rounded,
-                              title: 'Sua identidade',
+                              title: 'Seus dados',
                             ),
                             const SizedBox(height: 14),
                             TextField(
@@ -284,7 +285,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             const _FormSection(
                               icon: Icons.school_rounded,
-                              title: 'Seu contexto acadêmico',
+                              title: 'Curso e turma',
                             ),
                             const SizedBox(height: 14),
                             if (_loadingCourses)
@@ -292,6 +293,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             else
                               DropdownButtonFormField<String>(
                                 initialValue: _course,
+                                isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Curso',
                                   prefixIcon: Icon(Icons.auto_stories_outlined),
@@ -374,7 +376,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         TextCapitalization.characters,
                                     decoration: InputDecoration(
                                       labelText: 'Turma',
-                                      hintText: 'EC4A',
+                                      hintText: 'Ex.: EC4A',
                                       errorText: _groupError,
                                       counterText: '',
                                     ),
@@ -424,11 +426,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           strokeWidth: 2,
                                         ),
                                       )
-                                    : const Icon(Icons.rocket_launch_rounded),
+                                    : const Icon(Icons.check_rounded),
                                 label: Text(
                                   _saving
                                       ? 'Criando sua conta...'
-                                      : 'Começar no GranMap',
+                                      : 'Criar conta',
                                 ),
                               ),
                             ),

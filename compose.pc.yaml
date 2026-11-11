@@ -1,0 +1,109 @@
+name: granmap-pc
+
+services:
+  database:
+    image: granmap-pc-database:local
+    build:
+      context: .
+      dockerfile: deploy/coolify/Postgis.Dockerfile
+    environment:
+      POSTGRES_DB: granmap_pc
+      POSTGRES_USER: granmap_pc
+      POSTGRES_PASSWORD: ${GRANMAP_PC_DATABASE_PASSWORD:?Configure .secrets/pc.env}
+    volumes:
+      - pc_database:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U granmap_pc -d granmap_pc"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  backend:
+    image: granmap-pc-backend:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        python pc_bootstrap.py --source /bootstrap/source.db &&
+        exec uvicorn main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips '*' --root-path /api
+    environment:
+      GRANMAP_ENVIRONMENT: production
+      GRANMAP_DATABASE_URL: postgresql://granmap_pc:${GRANMAP_PC_DATABASE_PASSWORD:?Configure .secrets/pc.env}@database:5432/granmap_pc
+      GRANMAP_PUBLIC_ORIGINS: ${GRANMAP_PC_PUBLIC_ORIGIN:-https://localhost}
+      GRANMAP_COOKIE_SECURE: "true"
+      GRANMAP_API_DOCS_ENABLED: "false"
+      GRANMAP_METRICS_ENABLED: "false"
+      GRANMAP_TRUSTED_PROXY_HEADERS: "true"
+      GRANMAP_ALLOW_REMOTE_DEMO_SEED: "false"
+      GRANMAP_MINIMUM_APP_BUILD: "5"
+      GRANMAP_LATEST_APP_BUILD: "15"
+      GRANMAP_PC_ADMIN_EMAIL: ${GRANMAP_PC_ADMIN_EMAIL:-admin@granmap.local}
+      GRANMAP_PC_ADMIN_PASSWORD: ${GRANMAP_PC_ADMIN_PASSWORD:?Configure .secrets/pc.env}
+    volumes:
+      - ./.secrets/pc-bootstrap:/bootstrap:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
+      start_period: 30s
+    restart: unless-stopped
+
+  gateway:
+    image: granmap-pc-gateway:local
+    build:
+      context: deploy/pc
+      dockerfile: Gateway.Dockerfile
+    ports:
+      - "127.0.0.1:8787:8080"
+      - "127.0.0.1:8089:8080"
+    volumes:
+      - ./dist/pc-web:/srv/app:ro
+      - ./dist/pc-admin:/srv/admin:ro
+      - ./dist/pc-downloads:/srv/downloads:ro
+      - ./deploy/pc/install.html:/srv/install.html:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: database
+      PGUSER: granmap_pc
+      PGDATABASE: granmap_pc
+      PGPASSWORD: ${GRANMAP_PC_DATABASE_PASSWORD:?Configure .secrets/pc.env}
+    volumes:
+      - ./.secrets/pc-backups:/backups
+      - ./deploy/pc/backup.sh:/backup.sh:ro
+    command: [sh, /backup.sh]
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.0
+    command: [tunnel, --no-autoupdate, --protocol, http2, --url, "http://gateway:8080"]
+    profiles: [public]
+    depends_on:
+      gateway:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pc_database:

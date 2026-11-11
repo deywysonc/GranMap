@@ -2,7 +2,7 @@ param(
     [string]$ApiBase = 'http://127.0.0.1:8100',
     [string]$AppUrl = 'http://127.0.0.1:8088',
     [string]$AdminUrl = 'http://127.0.0.1:5174',
-    [string]$ApkUrl = 'http://127.0.0.1:8090/GranMap-demo-v17-arm64.apk'
+    [string]$ApkUrl = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,7 +28,11 @@ function Login-Demo {
 
 $appBytes = Assert-HttpOk -Url $AppUrl
 $adminBytes = Assert-HttpOk -Url $AdminUrl
-$apkBytes = Assert-HttpOk -Url $ApkUrl
+$apkBytes = if ([string]::IsNullOrWhiteSpace($ApkUrl)) {
+    $null
+} else {
+    Assert-HttpOk -Url $ApkUrl
+}
 $health = Invoke-RestMethod -Uri "$ApiBase/health"
 $map = Invoke-RestMethod -Uri "$ApiBase/maps/current"
 $integrations = Invoke-RestMethod -Uri "$ApiBase/integrations/status"

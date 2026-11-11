@@ -385,10 +385,10 @@ function App() {
                     <div className="section-heading">
                       <div>
                         <small>OPERAÇÃO</small>
-                        <h2>Prontidão comercial</h2>
+                        <h2>Status do ambiente</h2>
                       </div>
                       <span className={`badge ${integrationStatus.ready ? 'confirmed' : 'voting'}`}>
-                        {integrationStatus.ready ? 'Pronta' : 'Demo funcional'}
+                        {integrationStatus.ready ? 'Pronto' : 'Em operação'}
                       </span>
                     </div>
                     <div className="readiness-list">

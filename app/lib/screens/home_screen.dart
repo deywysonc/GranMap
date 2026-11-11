@@ -21,12 +21,18 @@ class HomeScreen extends StatefulWidget {
   final CampusMap campus;
   final Set<String> blockedEdgeIds;
   final VoidCallback? onSearchRequested;
+  final AppSession? session;
+  final PersonalDataService? personalDataService;
+  final UserAcademicService? academicService;
 
   const HomeScreen({
     super.key,
     required this.campus,
     this.blockedEdgeIds = const {},
     this.onSearchRequested,
+    this.session,
+    this.personalDataService,
+    this.academicService,
   });
 
   @override
@@ -35,8 +41,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _nextClass = const NextClassService();
-  final _personal = PersonalDataService();
-  final _academic = UserAcademicService();
+  late final PersonalDataService _personal;
+  late final UserAcademicService _academic;
+  late final AppSession _session;
   final _presence = GranPresenceService.instance;
   final _externalMaps = const ExternalMapsService();
 
@@ -44,71 +51,128 @@ class _HomeScreenState extends State<HomeScreen> {
   List<NavigationHistoryItem> _history = const [];
   AcademicSnapshot? _snapshot;
   bool _loadingAcademic = false;
+  int _loadGeneration = 0;
+  late String _sessionScope;
 
   @override
   void initState() {
     super.initState();
-    AppSession.instance.addListener(_sessionChanged);
+    _session = widget.session ?? AppSession.instance;
+    _personal =
+        widget.personalDataService ?? PersonalDataService(session: _session);
+    _academic =
+        widget.academicService ?? UserAcademicService(session: _session);
+    _sessionScope = _currentSessionScope;
+    _session.addListener(_sessionChanged);
     _reloadAll();
   }
 
   @override
   void dispose() {
-    AppSession.instance.removeListener(_sessionChanged);
-    _personal.dispose();
-    _academic.dispose();
+    _session.removeListener(_sessionChanged);
+    if (widget.personalDataService == null) _personal.dispose();
+    if (widget.academicService == null) _academic.dispose();
     super.dispose();
   }
 
   void _sessionChanged() {
     if (!mounted) return;
-    setState(() {});
-    _reloadAll();
+    final scope = _currentSessionScope;
+    final changed = scope != _sessionScope;
+    setState(() {
+      if (changed) {
+        _sessionScope = scope;
+        _favorites = const [];
+        _history = const [];
+        _snapshot = null;
+        _loadingAcademic = _session.isLoggedIn;
+      }
+    });
+    if (changed) _reloadAll();
   }
 
+  String get _currentSessionScope {
+    final user = _session.user;
+    return '${_session.storageScope}|${_session.token}|'
+        '${user?.course}|${user?.semester}|${user?.group}';
+  }
+
+  bool _isCurrentLoad(int generation, String scope) =>
+      mounted && generation == _loadGeneration && scope == _currentSessionScope;
+
   Future<void> _reloadAll() async {
-    final loggedIn = AppSession.instance.isLoggedIn;
-    if (mounted) setState(() => _loadingAcademic = loggedIn);
+    final generation = ++_loadGeneration;
+    final scope = _currentSessionScope;
+    final loggedIn = _session.isLoggedIn;
+    setState(() => _loadingAcademic = loggedIn);
+    await Future.wait<void>([
+      _loadFavorites(generation, scope),
+      _loadHistory(generation, scope),
+      _loadAcademic(generation, scope, loggedIn),
+    ]);
+  }
+
+  Future<void> _loadFavorites(int generation, String scope) async {
     try {
-      final values = await Future.wait<dynamic>([
-        _personal.loadFavorites().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => _favorites,
-        ),
-        _personal.loadHistory().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => _history,
-        ),
-        _academic.load().timeout(
-          const Duration(seconds: 6),
-          onTimeout: () => AcademicSnapshot(
-            classes: const [],
-            source: AcademicDataSource.none,
-            message: loggedIn
-                ? 'A grade demorou para responder. Puxe a tela para tentar novamente.'
-                : 'Entre no GranMap para carregar sua grade acadêmica.',
-          ),
-        ),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _favorites = values[0] as List<String>;
-        _history = values[1] as List<NavigationHistoryItem>;
-        _snapshot = values[2] as AcademicSnapshot;
-        _loadingAcademic = false;
-      });
+      final cached = await _personal.loadCachedFavorites().timeout(
+        const Duration(seconds: 2),
+      );
+      if (!_isCurrentLoad(generation, scope)) return;
+      setState(() => _favorites = cached);
     } catch (_) {
-      if (!mounted) return;
+      // A sincronização pode recuperar os dados quando o cache falha.
+    }
+    if (!_isCurrentLoad(generation, scope)) return;
+    try {
+      final favorites = await _personal.loadFavorites().timeout(
+        const Duration(seconds: 6),
+      );
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _favorites = favorites);
+      }
+    } catch (_) {
+      // Os favoritos locais permanecem disponíveis durante a falha da rede.
+    }
+  }
+
+  Future<void> _loadHistory(int generation, String scope) async {
+    try {
+      final history = await _personal.loadHistory().timeout(
+        const Duration(seconds: 6),
+      );
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _history = history);
+      }
+    } catch (_) {
+      // Mantém os destinos já carregados enquanto a atualização falha.
+    }
+  }
+
+  Future<void> _loadAcademic(
+    int generation,
+    String scope,
+    bool loggedIn,
+  ) async {
+    if (!loggedIn) return;
+    try {
+      final snapshot = await _academic.load().timeout(
+        const Duration(seconds: 10),
+      );
+      if (!_isCurrentLoad(generation, scope)) return;
+      setState(() => _snapshot = snapshot);
+    } catch (_) {
+      if (!_isCurrentLoad(generation, scope)) return;
       setState(() {
-        _snapshot ??= AcademicSnapshot(
-          classes: const [],
+        _snapshot ??= const AcademicSnapshot(
+          classes: [],
           source: AcademicDataSource.none,
-          message: loggedIn
-              ? 'Não foi possível atualizar a grade agora.'
-              : 'Entre no GranMap para carregar sua grade acadêmica.',
+          message: 'Não foi possível atualizar a grade agora. Puxe a tela para tentar novamente.',
         );
-        _loadingAcademic = false;
       });
+    } finally {
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _loadingAcademic = false);
+      }
     }
   }
 
@@ -142,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final session = AppSession.instance;
+    final session = _session;
     final user = session.user;
     final next = _nextClass.findNext(
       _snapshot?.classes ?? const <AcademicClass>[],
@@ -227,11 +291,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     _RecentDestination(poi: poi, onTap: () => _openRoute(poi)),
                     const SizedBox(height: 8),
                   ],
-                  const SizedBox(height: 6),
-                  _OfflineNotice(
-                    online: session.backendReachable,
-                    bundled: _snapshot?.isOnline != true,
-                  ),
                 ],
               ),
             ),
@@ -311,14 +370,14 @@ class _HomeHeader extends StatelessWidget {
             children: [
               Text(
                 firstName == null
-                    ? 'Bem-vindo ao GranMap'
-                    : '${_greeting()}, $firstName 👋',
+                    ? 'Faculdade Gran Tietê'
+                    : '${_greeting()}, $firstName',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: GranMapColors.textMuted),
               ),
               const SizedBox(height: 2),
               Text(
-                'O que você procura?',
+                'Para onde vamos?',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
             ],
@@ -462,7 +521,7 @@ class _LocationStatus extends StatelessWidget {
   _LocationAppearance _appearance() => switch (presence.status) {
     GranPresenceStatus.inside => const _LocationAppearance(
       title: 'Você está na Gran Tietê',
-      subtitle: 'Navegação interna e sensores prontos.',
+      subtitle: 'Pronto para guiar você pelo campus.',
       icon: Icons.location_on_rounded,
       tone: GranMapColors.mint,
     ),
@@ -482,7 +541,7 @@ class _LocationStatus extends StatelessWidget {
     ),
     GranPresenceStatus.permissionDenied => const _LocationAppearance(
       title: 'Localização sem permissão',
-      subtitle: 'Ative para o GranMap entender quando você chegar.',
+      subtitle: 'Ative a localização para identificar sua chegada ao campus.',
       actionLabel: 'ATIVAR',
       icon: Icons.location_disabled_rounded,
       tone: GranMapColors.amber,
@@ -575,7 +634,7 @@ class _NextClassCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _OrangeEyebrow('SUA ROTINA ACADÊMICA'),
+            const _OrangeEyebrow('PRÓXIMA AULA'),
             const SizedBox(height: 9),
             Text(
               'Entre para ver sua próxima aula',
@@ -609,11 +668,11 @@ class _NextClassCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Agenda livre agora',
+                    'Sem mais aulas por hoje',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   Text(
-                    snapshot?.message ?? 'Nenhuma próxima aula encontrada.',
+                    snapshot?.message ?? 'Nenhuma aula prevista para agora.',
                     style: Theme.of(context).textTheme.bodySmall
                         ?.copyWith(color: GranMapColors.textMuted),
                   ),
@@ -771,13 +830,13 @@ class _QuickAccessGrid extends StatelessWidget {
       (
         'financeiro',
         'Financeiro',
-        Icons.star_outline_rounded,
+        Icons.payments_outlined,
         GranMapColors.amber,
       ),
       (
         'banheiros',
         'Banheiros',
-        Icons.location_on_outlined,
+        Icons.wc_rounded,
         GranMapColors.mint,
       ),
     ];
@@ -836,7 +895,7 @@ class _QuickTile extends StatelessWidget {
               child: Text(
                 label,
                 style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(fontSize: 9),
+                    ?.copyWith(fontSize: 10.5),
               ),
             ),
           ],
@@ -871,7 +930,7 @@ class _RecentDestination extends StatelessWidget {
               children: [
                 Text(poi.name, style: Theme.of(context).textTheme.labelLarge),
                 Text(
-                  '${poi.floor == 0 ? 'Térreo' : 'Piso ${poi.floor}'}${poi.sector.isEmpty ? '' : ' • ${poi.sector}'}',
+                  '${poi.floor == 0 ? 'Térreo' : poi.floor == 1 ? 'Superior' : 'Piso ${poi.floor}'}${poi.sector.isEmpty ? '' : ' • ${poi.sector}'}',
                   style: Theme.of(context).textTheme.bodySmall
                       ?.copyWith(color: GranMapColors.textMuted),
                 ),
@@ -881,54 +940,6 @@ class _RecentDestination extends StatelessWidget {
           const Icon(
             Icons.chevron_right_rounded,
             color: GranMapColors.textMuted,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _OfflineNotice extends StatelessWidget {
-  final bool online;
-  final bool bundled;
-
-  const _OfflineNotice({required this.online, required this.bundled});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: BoxDecoration(
-        color: GranMapColors.mint.withValues(alpha: .055),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: GranMapColors.mint.withValues(alpha: .18)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.offline_pin_rounded,
-            color: GranMapColors.mint,
-            size: 18,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Mapa offline disponível',
-                  style: Theme.of(context).textTheme.labelLarge
-                      ?.copyWith(color: GranMapColors.mint),
-                ),
-                Text(
-                  online && !bundled
-                      ? 'Dados sincronizados. Navegação disponível sem internet.'
-                      : 'Navegação principal disponível neste aparelho.',
-                  style: Theme.of(context).textTheme.bodySmall
-                      ?.copyWith(color: GranMapColors.textMuted),
-                ),
-              ],
-            ),
           ),
         ],
       ),

@@ -12,6 +12,19 @@ import 'sensor_snapshot.dart';
 /// acelerômetro, aplica período refratário e deixa o MapMatcher limitar a deriva.
 /// Na implantação real os limiares devem ser calibrados com amostras do campus.
 class DeviceSensorService implements SensorService {
+  DeviceSensorService({
+    this.accelerationEvents,
+    this.gyroscopeEvents,
+    this.magnetometerEvents,
+    this.barometerEvents,
+    DateTime Function()? clock,
+  }) : _now = clock ?? DateTime.now;
+
+  final Stream<UserAccelerometerEvent>? accelerationEvents;
+  final Stream<GyroscopeEvent>? gyroscopeEvents;
+  final Stream<MagnetometerEvent>? magnetometerEvents;
+  final Stream<BarometerEvent>? barometerEvents;
+  final DateTime Function() _now;
   final StreamController<SensorSnapshot> _controller =
       StreamController<SensorSnapshot>.broadcast();
 
@@ -42,28 +55,42 @@ class DeviceSensorService implements SensorService {
   Future<void> start() async {
     if (_running) return;
     _running = true;
+    _lastGyroscopeAt = null;
+    _aboveThreshold = false;
     _subscriptions.add(
-      userAccelerometerEventStream(samplingPeriod: SensorInterval.gameInterval)
+      (accelerationEvents ??
+              userAccelerometerEventStream(
+                samplingPeriod: SensorInterval.gameInterval,
+              ))
           .listen(_onAcceleration, onError: (_) {}),
     );
     _subscriptions.add(
-      gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval)
+      (gyroscopeEvents ??
+              gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval))
           .listen((event) {
+            if (!_running) return;
             _hasGyroscope = true;
             _gz = event.z;
-            final now = DateTime.now();
-            final elapsed = _lastGyroscopeAt == null
+            final now = _now();
+            final interval = _lastGyroscopeAt == null
                 ? 0.0
                 : now.difference(_lastGyroscopeAt!).inMicroseconds /
                       Duration.microsecondsPerSecond;
             _lastGyroscopeAt = now;
+            // A gap is not an observed angular movement. Discard integration
+            // across pause/resume or a delayed sensor event.
+            final elapsed = interval >= 0 && interval <= .25 ? interval : 0.0;
             _heading = (_heading + _gz * elapsed * 180 / math.pi + 360) % 360;
             _emit();
           }, onError: (_) {}),
     );
     _subscriptions.add(
-      magnetometerEventStream(samplingPeriod: SensorInterval.uiInterval)
+      (magnetometerEvents ??
+              magnetometerEventStream(
+                samplingPeriod: SensorInterval.uiInterval,
+              ))
           .listen((event) {
+            if (!_running) return;
             _hasMagnetometer = true;
             _mx = event.x;
             _my = event.y;
@@ -76,8 +103,12 @@ class DeviceSensorService implements SensorService {
           }, onError: (_) {}),
     );
     _subscriptions.add(
-      barometerEventStream(samplingPeriod: SensorInterval.normalInterval)
+      (barometerEvents ??
+              barometerEventStream(
+                samplingPeriod: SensorInterval.normalInterval,
+              ))
           .listen((event) {
+            if (!_running) return;
             _hasBarometer = true;
             _pressure = event.pressure;
             _emit();
@@ -87,12 +118,13 @@ class DeviceSensorService implements SensorService {
   }
 
   void _onAcceleration(UserAccelerometerEvent event) {
+    if (!_running) return;
     _hasAccelerometer = true;
     _ax = event.x;
     _ay = event.y;
     _az = event.z;
     final magnitude = math.sqrt(_ax * _ax + _ay * _ay + _az * _az);
-    final now = DateTime.now();
+    final now = _now();
     final canStep =
         _lastStep == null || now.difference(_lastStep!).inMilliseconds > 310;
     if (magnitude > 1.35 && !_aboveThreshold && canStep) {
@@ -129,7 +161,7 @@ class DeviceSensorService implements SensorService {
         confidence: (.34 + availableSignals * .145).clamp(0, .92),
         pressureHpa: _pressure,
         source: 'device',
-        timestamp: DateTime.now(),
+        timestamp: _now(),
       ),
     );
   }
@@ -144,10 +176,13 @@ class DeviceSensorService implements SensorService {
   @override
   Future<void> stop() async {
     _running = false;
-    for (final subscription in _subscriptions) {
+    _lastGyroscopeAt = null;
+    _aboveThreshold = false;
+    final subscriptions = List.of(_subscriptions);
+    _subscriptions.clear();
+    for (final subscription in subscriptions) {
       await subscription.cancel();
     }
-    _subscriptions.clear();
   }
 
   Future<void> dispose() async {

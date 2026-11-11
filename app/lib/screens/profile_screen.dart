@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../models/campus_map.dart';
@@ -211,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Expanded(
                               child: _Metric(
                                 value: '${user.reputation}',
-                                label: 'Confiança',
+                                label: 'Reputação',
                               ),
                             ),
                           ],
@@ -271,30 +272,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                         const SizedBox(height: 22),
-                        const _SectionLabel('MAPA'),
+                        const _SectionLabel('MAPA E NAVEGAÇÃO'),
                         const SizedBox(height: 9),
                         _SettingsGroup(
                           children: [
                             const _SettingsRow(
                               icon: Icons.map_outlined,
-                              title: 'Dados offline',
-                              value: 'Atualizado',
+                              title: 'Mapa offline',
+                              value: 'Térreo e Superior',
                               valueColor: GranMapColors.mint,
-                            ),
-                            _SettingsRow(
-                              icon: Icons.download_rounded,
-                              title: 'Baixar pisos adicionais',
-                              onTap: () => _message(
-                                'Os dois pisos da demo já estão disponíveis offline.',
-                              ),
                             ),
                             _SettingsRow(
                               icon: Icons.sensors_rounded,
                               title: 'Sensores e localização',
-                              value: 'Ativos no uso',
+                              value: 'Ativos em uso',
                               valueColor: GranMapColors.mint,
                               onTap: () => _message(
-                                'Movimento, bússola e localização ficam ativos enquanto o GranMap está aberto e pausam ao sair do app.',
+                                'Movimento, bússola e localização funcionam apenas enquanto o app está aberto.',
                               ),
                             ),
                           ],
@@ -313,11 +307,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onChanged: preferences.setAccessibleRoutes,
                               ),
                             ),
-                            const _SettingsRow(
-                              icon: Icons.dark_mode_outlined,
-                              title: 'Tema visual',
-                              value: 'Escuro',
-                            ),
                             _SettingsRow(
                               icon: Icons.contrast_rounded,
                               title: 'Contraste alto',
@@ -327,16 +316,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 onChanged: preferences.setHighContrast,
                               ),
                             ),
-                            _SettingsRow(
-                              icon: Icons.developer_mode_rounded,
-                              title: 'Diagnóstico técnico',
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      DeveloperScreen(campus: widget.campus),
+                            if (kDebugMode)
+                              _SettingsRow(
+                                icon: Icons.developer_mode_rounded,
+                                title: 'Diagnóstico técnico',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        DeveloperScreen(campus: widget.campus),
+                                  ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -507,7 +497,7 @@ class _IdentityHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  '☆ $reputation de confiança',
+                  'Reputação: $reputation',
                   style: Theme.of(context).textTheme.labelSmall
                       ?.copyWith(color: GranMapColors.orange),
                 ),
@@ -701,12 +691,12 @@ class _GuestProfile extends StatelessWidget {
         const GranMapBrandMark(size: 66),
         const SizedBox(height: 16),
         Text(
-          'Seu GranMap começa aqui',
+          'Entre no GranMap',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 6),
         Text(
-          'Entre para sincronizar grade, favoritos e contribuições.',
+          'Acesse sua grade de aulas, favoritos e avisos de sala.',
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.bodyMedium
               ?.copyWith(color: GranMapColors.textMuted),

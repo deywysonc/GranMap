@@ -1,16 +1,17 @@
 # GranMap
 
 GranMap é uma plataforma de orientação indoor para a Faculdade Gran Tietê.
-Enquanto a planta oficial não está disponível, o repositório opera com um
-mapa conceitual explicitamente provisório: ele permite validar busca, rotas,
-troca de pisos, horários, conta pessoal e inteligência comunitária sem
-inventar distâncias físicas.
+O mapa do térreo ainda é aproximado, e o piso superior usa a planta fornecida.
+Essa base permite validar busca, rotas, troca de pisos, horários, conta pessoal
+e avisos comunitários. Escala, distâncias e posicionamento indoor ainda
+precisam de medição e calibração presencial.
 
 ## O que já funciona
 
-- mapa conceitual dos pisos 0 e 1, com 27 salas reais e pontos de interesse;
+- mapa dos pisos 0 e 1, com salas, laboratórios e pontos de interesse;
 - busca, autocomplete e rotas A* compartilhadas por coordenadas X/Y/Z;
-- navegação contínua no mapa 2D, Twin 3D, Walk View e Gran Lens AR;
+- navegação contínua no mapa 2D, maquete 3D e Gran Lens AR;
+- planta com paredes, portas, corredores e seleção de locais por toque;
 - câmera real opcional no Gran Lens e leitura de âncoras por QR;
 - sensores físicos, fusão giroscópio/magnetômetro, detecção de passos, PDR e Map Matching;
 - troca de piso, instruções, progresso, ETA conceitual e rota acessível;
@@ -18,7 +19,8 @@ inventar distâncias físicas.
 - cadastro/login, perfil, horários, favoritos e histórico;
 - botão para a próxima aula e integração entre grade e navegação;
 - contribuições autenticadas, voto único editável, consenso e reputação;
-- cache e fila offline para propostas e votos;
+- cache e fila offline atômicos para propostas e votos, isolados por conta e API;
+- sincronização de pendências a cada 20 segundos com o app em primeiro plano;
 - repetição segura com idempotência, retentativa exponencial e fila de falhas recuperável;
 - SQLite local estruturado, credencial no Keychain/Keystore e mapa/grade/notificações em cache;
 - onboarding, consentimento de localização, alto contraste e preferência de rota acessível persistentes;
@@ -26,6 +28,7 @@ inventar distâncias físicas.
 - modo de manutenção, bloqueio de versões antigas e chaves de funcionalidades controladas pela API;
 - diagnóstico seguro com identificador de requisição e relatório copiável, sem expor o token;
 - notificações de alteração da grade, com leitura e cópia offline;
+- notificações com limites de espera, nova tentativa e proteção na troca de conta;
 - painel institucional com CRUD acadêmico, papéis, conflitos, moderação e auditoria;
 - versões publicáveis do mapa, preview visual, bloqueios de Edge, recálculo e âncoras;
 - coleta magnética versionada pelo GranMap Lab;
@@ -124,9 +127,10 @@ O Android possui dois flavors para impedir que uma configuração de demo seja
 publicada por engano:
 
 ```powershell
-# Demo instalável na rede local; permite HTTP e pode usar a chave de debug.
-flutter build apk --flavor demo --release `
-  --dart-define=GRANMAP_API_URL=http://SEU-IP:8100
+# Demo instalável, separada por arquitetura e ligada à API pública.
+# Pode usar a chave de debug; HTTP local continua permitido para desenvolvimento.
+flutter build apk --flavor demo --release --split-per-abi `
+  --dart-define=GRANMAP_API_URL=https://granmap.168.119.244.43.sslip.io/api
 
 # Produção; bloqueia HTTP e exige android/key.properties.
 flutter build appbundle --flavor production --release `
@@ -147,13 +151,22 @@ Para o servidor ARM64 compartilhado do Web Lab/Coolify, use
 [`deploy/coolify/README.md`](deploy/coolify/README.md). Essa variante constrói
 PostGIS para ARM64, aplica limites de CPU/RAM e não ocupa portas públicas do host.
 
-O APK Android atual, separado por arquitetura e validado com assinatura v2,
-está em [deliverables/GranMap-Demo-v1.4.1-arm64-v8a.apk](deliverables/GranMap-Demo-v1.4.1-arm64-v8a.apk).
-Use-o em celulares Android atuais; as variantes ARM de 32 bits e x86_64 também
-estão na mesma pasta. Consulte [docs/RELEASE_CHECKLIST.md](docs/RELEASE_CHECKLIST.md)
-antes de distribuir uma versão pública.
+## Publicação e download (v1.6.9)
 
-## Limite honesto da demo
+A versão atual (`1.6.9+21`) está publicada com API FastAPI, PostgreSQL/PostGIS
+e painel administrativo via `compose.coolify.yaml` em HTTPS:
+
+- Portal e painel: `https://granmap.168.119.244.43.sslip.io`
+- Página de instalação Android: `https://granmap.168.119.244.43.sslip.io/instalar`
+- Download direto do APK: `https://granmap.168.119.244.43.sslip.io/baixar`
+- Releases no GitHub: `https://github.com/deywysonc/GranMap/releases/latest`
+
+Os APKs assinados de entrega ficam em `deliverables/` (ex.: `GranMap.apk`,
+`GranMap-Android-arm64.apk`, `GranMap-32bits.apk` e `GranMap-apk.zip`).
+Street View/Walk foi retirado da interface e do pacote de assets, conforme a
+decisão do projeto. Os materiais originais de referência permanecem preservados.
+
+## Limite conceitual do mapa
 
 O software, a câmera e as fontes de sensores estão conectados, mas o mapa ainda
 é conceitual. Portanto, posição, distância, ETA e alinhamento AR não são

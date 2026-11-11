@@ -15,11 +15,14 @@ admin_web/dist/
 
 # Artefatos locais de distribuição
 dist/
+.docx-work/
+deliverables/
 
 # Python
 backend/.venv/
-backend/__pycache__/
-backend/**/*.pyc
+__pycache__/
+*.pyc
+.env
 
 # Banco operacional local
 backend/granmap.db
@@ -35,6 +38,7 @@ Thumbs.db
 
 # Perfis e evidências locais de QA (podem conter sessões autenticadas)
 .qa-edge-profile/
+.qa-map/
 qa-*.png
 
 # Cópias locais de trabalho

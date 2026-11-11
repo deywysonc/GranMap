@@ -31,6 +31,7 @@ void main() {
     await service.start();
     expect(sensors.startCalls, 1);
 
+    sensors.emit(steps: 0, heading: 0);
     sensors.emit(steps: 1, heading: 0);
     await Future<void>.delayed(Duration.zero);
     expect(service.current.x, closeTo(1, .01));
@@ -55,6 +56,44 @@ void main() {
     await subscription.cancel();
     await service.dispose();
     expect(sensors.stopCalls, 1);
+    await sensors.dispose();
+  });
+
+  test('primeira leitura e retomada não repetem passos acumulados', () async {
+    final sensors = _FakeSensors();
+    final service = PdrPositioningService(
+      campus: _campus(),
+      sensors: sensors,
+      strideUnits: 1,
+      initialPosition: PositionSample(
+        x: 0,
+        y: 0,
+        z: 0,
+        floor: 0,
+        headingDegrees: 0,
+        accuracyMeters: 1,
+        confidence: .9,
+        timestamp: DateTime.now(),
+      ),
+    );
+    await service.start();
+    sensors.emit(steps: 200, heading: 0);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.current.x, 0);
+    sensors.emit(steps: 201, heading: 0);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.current.x, closeTo(1, .01));
+    await service.stop();
+    sensors.emit(steps: 220, heading: 0);
+    await service.start();
+    sensors.emit(steps: 230, heading: 0);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.current.x, closeTo(1, .01));
+    sensors.emit(steps: 231, heading: 0);
+    await Future<void>.delayed(Duration.zero);
+    expect(service.current.x, closeTo(2, .01));
+    expect(sensors.startCalls, 2);
+    await service.dispose();
     await sensors.dispose();
   });
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../config/api_config.dart';
 import '../services/app_runtime_config.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
@@ -57,8 +56,8 @@ class _AvailabilityScreenState extends State<AvailabilityScreen> {
                       const SizedBox(height: 10),
                       Text(
                         widget.maintenance
-                            ? 'O serviço está temporariamente protegido enquanto uma atualização é aplicada. O mapa offline continua preservado no aparelho.'
-                            : 'Esta instalação é a build ${ApiConfig.appBuild}; o servidor exige a build ${config.minimumBuild} ou mais recente.',
+                            ? 'Estamos aplicando uma atualização rápida. Seu mapa offline continua disponível; tente novamente em alguns minutos.'
+                            : 'Uma nova versão do GranMap (${config.minimumBuild}+) é necessária para continuar usando os recursos online.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyLarge
                             ?.copyWith(color: GranMapColors.textMuted),

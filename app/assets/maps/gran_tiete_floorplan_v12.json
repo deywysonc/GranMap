@@ -1,0 +1,3610 @@
+{
+  "building": {
+    "id": "gran_tiete",
+    "name": "Faculdade Gran Tietê",
+    "version": "0.12-floorplan-v12"
+  },
+  "metadata": {
+    "roomCatalogStatus": "real",
+    "geometryStatus": "floorplan_relative",
+    "distanceStatus": "provisional",
+    "coordinateSystem": "navigation_conceptual_xyz_with_floorplan_display_xy",
+    "distanceUnit": "conceptual_unit",
+    "source": "HANDOFF_CODEX_GRANMAP + mapa conceitual v6 + quatro vídeos de referência de 2026-08-20",
+    "surveyStatus": "upper_pdf_and_author_spatial_corrections_v12",
+    "importantNote": "Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: lanchonete à esquerda e rampa logo à direita, ambas de frente à quadra com acesso pelo sul e circulação compartilhada. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.",
+    "mapMode": "architectural_floorplan_with_provisional_ground",
+    "evidenceCaptureIds": [
+      "capture_entrada_gran_180941",
+      "capture_rampa_subida_181233",
+      "capture_area_agronomia_181639",
+      "capture_corredor_entrada_tyto_182059"
+    ],
+    "sourceDocuments": [
+      "PAV.SUPERIOR-Gran Tietê-Layout1.pdf"
+    ]
+  },
+  "floors": [
+    {
+      "id": "floor_0",
+      "name": "Térreo",
+      "level": 0,
+      "elevation": 0
+    },
+    {
+      "id": "floor_1",
+      "name": "Piso superior",
+      "level": 1,
+      "elevation": 1
+    }
+  ],
+  "zones": [
+    {
+      "id": "zone_ground_c1",
+      "name": "Corredor Gran",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 24,
+      "y": 66,
+      "width": 80,
+      "height": 8,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "id": "zone_ground_gran_entry",
+      "name": "Entrada Gran",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 4,
+      "y": 74,
+      "width": 13,
+      "height": 8,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_gran_bend",
+      "name": "Acesso Gran",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 16,
+      "y": 66,
+      "width": 10,
+      "height": 16,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_ramped_room",
+      "name": "Sala com rampa",
+      "type": "classroom",
+      "floor": 0,
+      "x": 21,
+      "y": 52,
+      "width": 10,
+      "height": 11,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_ramped_room_access",
+      "name": "Acesso à sala",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 24,
+      "y": 63,
+      "width": 4,
+      "height": 3,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_lab_quimica",
+      "name": "Laboratório de Química",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 34.25,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_lab_microscopia",
+      "name": "Laboratório de Microscopia",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 45.75,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_lab_informatica",
+      "name": "Laboratório de Informática",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 57.25,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_clinica_escola",
+      "name": "Clínica Escola",
+      "type": "clinic",
+      "floor": 0,
+      "x": 68.75,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_leonardo_da_vinci",
+      "name": "Leonardo da Vinci",
+      "type": "classroom",
+      "floor": 0,
+      "x": 80.25,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_isaac_newton",
+      "name": "Isaac Newton",
+      "type": "classroom",
+      "floor": 0,
+      "x": 91.75,
+      "y": 74,
+      "width": 11.5,
+      "height": 18,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_labs_quimica_entrada",
+      "name": "Laboratórios de Química na Entrada Gran",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 4,
+      "y": 83,
+      "width": 22,
+      "height": 8,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_labs_quimica_rampa",
+      "name": "Laboratórios de Química próximos à sala com rampa",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 0,
+      "y": 54,
+      "width": 13,
+      "height": 10,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_labs_quimica_link",
+      "name": "Acesso aproximado aos laboratórios",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 16,
+      "y": 57,
+      "width": 4,
+      "height": 9,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_labs_quimica_crosslink",
+      "name": "Acesso aproximado aos laboratórios",
+      "type": "corridor_gran",
+      "floor": 0,
+      "x": 13,
+      "y": 57,
+      "width": 7,
+      "height": 4,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_c2",
+      "name": "Corredor Tyto · Secretaria",
+      "type": "corridor_tyto",
+      "floor": 0,
+      "x": 4,
+      "y": 24,
+      "width": 100,
+      "height": 8,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "id": "zone_ground_secretaria",
+      "name": "Secretaria",
+      "type": "administration",
+      "floor": 0,
+      "x": 4,
+      "y": 32,
+      "width": 9.5,
+      "height": 14,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_alan_turing",
+      "name": "Alan Turing (Informática)",
+      "type": "laboratory",
+      "floor": 0,
+      "x": 13.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_cora_coralina",
+      "name": "Cora Coralina (Professores)",
+      "type": "staff_room",
+      "floor": 0,
+      "x": 20.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_henry_ford",
+      "name": "Henry Ford",
+      "type": "classroom",
+      "floor": 0,
+      "x": 27.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_albert_einstein",
+      "name": "Albert Einstein",
+      "type": "classroom",
+      "floor": 0,
+      "x": 34.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_socrates",
+      "name": "Sócrates",
+      "type": "classroom",
+      "floor": 0,
+      "x": 41.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_karl_marx",
+      "name": "Karl Marx",
+      "type": "classroom",
+      "floor": 0,
+      "x": 48.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_peter_drucker",
+      "name": "Peter Drucker",
+      "type": "classroom",
+      "floor": 0,
+      "x": 55.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_paulo_freire",
+      "name": "Paulo Freire",
+      "type": "classroom",
+      "floor": 0,
+      "x": 62.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_carlos_drummond",
+      "name": "Carlos Drummond",
+      "type": "classroom",
+      "floor": 0,
+      "x": 69.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_zilda_arns",
+      "name": "Zilda Arns",
+      "type": "classroom",
+      "floor": 0,
+      "x": 76.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_maria_lacerda",
+      "name": "Maria Lacerda",
+      "type": "classroom",
+      "floor": 0,
+      "x": 83.5,
+      "y": 32,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_rachel_de_queiroz",
+      "name": "Rachel de Queiroz",
+      "type": "classroom",
+      "floor": 0,
+      "x": 90.5,
+      "y": 10,
+      "width": 13,
+      "height": 14,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_court_west",
+      "name": "Circulação",
+      "type": "open_area",
+      "floor": 0,
+      "x": 106,
+      "y": 18,
+      "width": 7,
+      "height": 56,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_court_north",
+      "name": "Frente compartilhada da quadra, lanchonete e rampa",
+      "type": "open_area",
+      "floor": 0,
+      "x": 104,
+      "y": 64,
+      "width": 41,
+      "height": 13,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_court_south",
+      "name": "Circulação",
+      "type": "open_area",
+      "floor": 0,
+      "x": 113,
+      "y": 18,
+      "width": 32,
+      "height": 5,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_court_east",
+      "name": "Circulação",
+      "type": "open_area",
+      "floor": 0,
+      "x": 138,
+      "y": 23,
+      "width": 7,
+      "height": 44,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_court",
+      "name": "Quadra",
+      "type": "court",
+      "floor": 0,
+      "x": 115,
+      "y": 24,
+      "width": 22,
+      "height": 40,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_snack",
+      "name": "Lanchonete",
+      "type": "cafeteria",
+      "floor": 0,
+      "x": 115,
+      "y": 77,
+      "width": 10,
+      "height": 15,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_upper_access",
+      "name": "Rampa · subir",
+      "type": "ramp",
+      "floor": 0,
+      "x": 126,
+      "y": 77,
+      "width": 11,
+      "height": 15,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "id": "zone_ground_biblioteca",
+      "name": "Biblioteca",
+      "type": "library",
+      "floor": 0,
+      "x": 145,
+      "y": 52,
+      "width": 14,
+      "height": 13,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_financeiro",
+      "name": "Financeiro",
+      "type": "finance",
+      "floor": 0,
+      "x": 145,
+      "y": 37,
+      "width": 14,
+      "height": 13,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_ground_banheiros",
+      "name": "Banheiros",
+      "type": "restroom",
+      "floor": 0,
+      "x": 145,
+      "y": 22,
+      "width": 14,
+      "height": 13,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_corridor",
+      "name": "Galeria superior",
+      "type": "corridor_upper",
+      "floor": 1,
+      "x": 4,
+      "y": 48.8,
+      "width": 103.5,
+      "height": 5.7,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_corridor_step",
+      "name": "Galeria",
+      "type": "corridor_upper",
+      "floor": 1,
+      "x": 101.8,
+      "y": 54.5,
+      "width": 5.7,
+      "height": 9.7,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_corridor_right",
+      "name": "Galeria dos laboratórios",
+      "type": "corridor_upper",
+      "floor": 1,
+      "x": 107.5,
+      "y": 58.5,
+      "width": 44.4,
+      "height": 5.7,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_bwc_access",
+      "name": "Acesso aos banheiros",
+      "type": "corridor_upper",
+      "floor": 1,
+      "x": 81.4,
+      "y": 54.5,
+      "width": 2.3,
+      "height": 9.8,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_gate",
+      "name": "Portão Superior",
+      "type": "upper_entrance",
+      "floor": 1,
+      "x": 1,
+      "y": 40,
+      "width": 3,
+      "height": 8,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_gate_access",
+      "name": "Acesso superior",
+      "type": "corridor_upper",
+      "floor": 1,
+      "x": 4,
+      "y": 40,
+      "width": 5,
+      "height": 8.8,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_ramp",
+      "name": "Rampa · descer",
+      "type": "ramp",
+      "floor": 1,
+      "x": 117,
+      "y": 1,
+      "width": 27,
+      "height": 16,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "id": "zone_upper_south_access",
+      "name": "Espaço amplo caminhável do piso superior",
+      "type": "open_area",
+      "floor": 1,
+      "x": 4,
+      "y": 17,
+      "width": 147.9,
+      "height": 31.8,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_ramp_access",
+      "name": "Continuação do espaço caminhável à direita",
+      "type": "open_area",
+      "floor": 1,
+      "x": 107.5,
+      "y": 48.8,
+      "width": 44.4,
+      "height": 9.7,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_van_gogh",
+      "name": "Van Gogh",
+      "type": "classroom",
+      "floor": 1,
+      "x": 4,
+      "y": 54.5,
+      "width": 13.3,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_cecilia",
+      "name": "Cecília Meireles",
+      "type": "classroom",
+      "floor": 1,
+      "x": 17.3,
+      "y": 54.5,
+      "width": 12.9,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_kaisen",
+      "name": "Laboratório Kaisen (Machado de Assis)",
+      "type": "laboratory",
+      "floor": 1,
+      "x": 30.2,
+      "y": 54.5,
+      "width": 12.7,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_tarsila",
+      "name": "Tarsila do Amaral",
+      "type": "classroom",
+      "floor": 1,
+      "x": 42.9,
+      "y": 54.5,
+      "width": 13,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_auditorio",
+      "name": "Auditório",
+      "type": "auditorium",
+      "floor": 1,
+      "x": 55.9,
+      "y": 54.5,
+      "width": 25.5,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_monteiro",
+      "name": "Monteiro Lobato",
+      "type": "classroom",
+      "floor": 1,
+      "x": 89.5,
+      "y": 54.5,
+      "width": 11.9,
+      "height": 19.5,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_fayol",
+      "name": "Fayol",
+      "type": "laboratory",
+      "floor": 1,
+      "x": 101.4,
+      "y": 64.2,
+      "width": 18.5,
+      "height": 9.799999999999997,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_ayrton",
+      "name": "Ayrton Senna",
+      "type": "project_laboratory",
+      "floor": 1,
+      "x": 119.9,
+      "y": 64.2,
+      "width": 15.8,
+      "height": 9.799999999999997,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_santos",
+      "name": "Santos Dumont",
+      "type": "classroom",
+      "floor": 1,
+      "x": 135.7,
+      "y": 64.2,
+      "width": 16.2,
+      "height": 9.799999999999997,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_bwc_fem",
+      "name": "BWC Feminino",
+      "type": "restroom",
+      "floor": 1,
+      "x": 83.7,
+      "y": 54.5,
+      "width": 5.8,
+      "height": 9.8,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_bwc_masc",
+      "name": "BWC Masculino",
+      "type": "restroom",
+      "floor": 1,
+      "x": 81.4,
+      "y": 64.3,
+      "width": 8.1,
+      "height": 9.7,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_archive",
+      "name": "Arquivo",
+      "type": "archive",
+      "floor": 1,
+      "x": 34,
+      "y": 8,
+      "width": 41.6,
+      "height": 5.1,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zone_upper_agronomy",
+      "name": "Agronomia",
+      "type": "agronomy",
+      "floor": 1,
+      "x": 84,
+      "y": 1,
+      "width": 25,
+      "height": 16,
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": [
+        "capture_area_agronomia_181639"
+      ]
+    }
+  ],
+  "pois": [
+    {
+      "id": "entrada_gran",
+      "name": "Entrada Gran",
+      "type": "entrance",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 0,
+      "y": 32,
+      "z": 0,
+      "navigationNode": "ground_c1_start",
+      "displayX": 8,
+      "displayY": 78,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "id": "rampa_acesso_sala",
+      "name": "Sala com rampa de acesso",
+      "type": "ramp",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 10,
+      "y": 26,
+      "z": 0,
+      "navigationNode": "ground_c1_room_ramp",
+      "displayX": 26,
+      "displayY": 60,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "lab_quimica",
+      "name": "Laboratório de Química",
+      "type": "laboratory",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 28,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_0",
+      "displayX": 40,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "lab_microscopia",
+      "name": "Laboratório de Microscopia",
+      "type": "laboratory",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 40,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_1",
+      "displayX": 51.5,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "lab_informatica",
+      "name": "Laboratório de Informática",
+      "type": "laboratory",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 52,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_2",
+      "displayX": 63,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "clinica_escola",
+      "name": "Clínica Escola",
+      "type": "clinic",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 64,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_3",
+      "displayX": 74.5,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "leonardo_da_vinci",
+      "name": "Leonardo da Vinci",
+      "type": "classroom",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 76,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_4",
+      "displayX": 86,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "isaac_newton",
+      "name": "Isaac Newton",
+      "type": "classroom",
+      "sector": "Corredor Entrada Gran",
+      "floor": 0,
+      "x": 86,
+      "y": 42,
+      "z": 0,
+      "navigationNode": "ground_c1_door_5",
+      "displayX": 97.5,
+      "displayY": 76,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "entrada_tyto_gran",
+      "name": "Entrada Tyto/Gran + Secretaria",
+      "type": "entrance",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 0,
+      "y": 12,
+      "z": 0,
+      "navigationNode": "ground_c2_start",
+      "displayX": 8,
+      "displayY": 28,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "id": "secretaria",
+      "name": "Secretaria",
+      "type": "administration",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 5,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_secretaria_door",
+      "displayX": 8.75,
+      "displayY": 39,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "id": "alan_turing",
+      "name": "Alan Turing (Informática)",
+      "type": "laboratory",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 14,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_0",
+      "displayX": 20,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "cora_coralina",
+      "name": "Cora Coralina (Professores)",
+      "type": "staff_room",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 20,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_1",
+      "displayX": 27,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "henry_ford",
+      "name": "Henry Ford",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 26,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_2",
+      "displayX": 34,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "albert_einstein",
+      "name": "Albert Einstein",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 32,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_3",
+      "displayX": 41,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "socrates",
+      "name": "Sócrates",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 38,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_4",
+      "displayX": 48,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "karl_marx",
+      "name": "Karl Marx",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 44,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_5",
+      "displayX": 55,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "peter_drucker",
+      "name": "Peter Drucker",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 50,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_6",
+      "displayX": 62,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "paulo_freire",
+      "name": "Paulo Freire",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 56,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_7",
+      "displayX": 69,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "carlos_drummond",
+      "name": "Carlos Drummond",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 62,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_8",
+      "displayX": 76,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "zilda_arns",
+      "name": "Zilda Arns",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 68,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_9",
+      "displayX": 83,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "maria_lacerda",
+      "name": "Maria Lacerda",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 74,
+      "y": 18,
+      "z": 0,
+      "navigationNode": "ground_c2_door_10",
+      "displayX": 90,
+      "displayY": 39,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "rachel_de_queiroz",
+      "name": "Rachel de Queiroz",
+      "type": "classroom",
+      "sector": "Corredor Tyto/Gran + Secretaria",
+      "floor": 0,
+      "x": 80,
+      "y": 6,
+      "z": 0,
+      "navigationNode": "ground_c2_door_11",
+      "displayX": 97,
+      "displayY": 17,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "lanchonete",
+      "name": "Lanchonete",
+      "type": "cafeteria",
+      "sector": "De frente à quadra · fim do Corredor Gran",
+      "floor": 0,
+      "x": 96,
+      "y": 39,
+      "z": 0,
+      "navigationNode": "ground_snack_bar",
+      "displayX": 120,
+      "displayY": 78,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "quadra",
+      "name": "Quadra",
+      "type": "court",
+      "sector": "Área da quadra",
+      "floor": 0,
+      "x": 98,
+      "y": 23,
+      "z": 0,
+      "navigationNode": "ground_court_west_mid",
+      "displayX": 126,
+      "displayY": 44,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "biblioteca",
+      "name": "Biblioteca",
+      "type": "library",
+      "sector": "Serviços ao lado da quadra",
+      "floor": 0,
+      "x": 124,
+      "y": 30,
+      "z": 0,
+      "navigationNode": "ground_services_north",
+      "displayX": 147,
+      "displayY": 59,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "financeiro",
+      "name": "Financeiro",
+      "type": "finance",
+      "sector": "Serviços ao lado da quadra",
+      "floor": 0,
+      "x": 124,
+      "y": 23,
+      "z": 0,
+      "navigationNode": "ground_services_mid",
+      "displayX": 147,
+      "displayY": 44,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "banheiros",
+      "name": "Banheiros",
+      "type": "restroom",
+      "sector": "Serviços ao lado da quadra",
+      "floor": 0,
+      "x": 124,
+      "y": 16,
+      "z": 0,
+      "navigationNode": "ground_services_south",
+      "displayX": 147,
+      "displayY": 28.5,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "portao_superior",
+      "name": "Portão Superior",
+      "type": "upper_entrance",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 0,
+      "y": 25,
+      "z": 1,
+      "navigationNode": "upper_gate",
+      "evidenceCaptureIds": [],
+      "displayX": 2.5,
+      "displayY": 44,
+      "verification": "user_confirmed"
+    },
+    {
+      "id": "van_gogh",
+      "name": "Van Gogh",
+      "type": "classroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 12,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_0",
+      "displayX": 10.65,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "cecilia_meireles",
+      "name": "Cecília Meireles",
+      "type": "classroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 20,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_1",
+      "displayX": 23.75,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "lab_kaisen_machado_assis",
+      "name": "Laboratório Kaisen (Machado de Assis)",
+      "type": "laboratory",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 28,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_2",
+      "displayX": 36.55,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "tarsila_do_amaral",
+      "name": "Tarsila do Amaral",
+      "type": "classroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 36,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_3",
+      "displayX": 49.4,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "auditorio",
+      "name": "Auditório",
+      "type": "auditorium",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 44,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_4",
+      "displayX": 68.65,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "monteiro_lobato",
+      "name": "Monteiro Lobato",
+      "type": "classroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 52,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_door_5",
+      "displayX": 95.45,
+      "displayY": 56,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "fayol",
+      "name": "Fayol",
+      "type": "laboratory",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 60,
+      "y": 35,
+      "z": 1,
+      "navigationNode": "upper_door_6",
+      "displayX": 110.65,
+      "displayY": 65.7,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "ayrton_senna",
+      "name": "Ayrton Senna",
+      "type": "laboratory",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 68,
+      "y": 35,
+      "z": 1,
+      "navigationNode": "upper_door_7",
+      "displayX": 127.80000000000001,
+      "displayY": 65.7,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "santos_dummont",
+      "name": "Santos Dumont",
+      "type": "classroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 76,
+      "y": 35,
+      "z": 1,
+      "navigationNode": "upper_door_8",
+      "displayX": 143.79999999999998,
+      "displayY": 65.7,
+      "verification": "floorplan_relative",
+      "evidenceCaptureIds": []
+    },
+    {
+      "id": "area_agronomia",
+      "name": "Área de agronomia",
+      "type": "agronomy",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 110,
+      "y": 30,
+      "z": 1,
+      "navigationNode": "upper_agronomy",
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_area_agronomia_181639"
+      ],
+      "displayX": 96.5,
+      "displayY": 16
+    },
+    {
+      "id": "rampa_caracol",
+      "name": "Rampa para o térreo",
+      "type": "ramp",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 124,
+      "y": 8,
+      "z": 1,
+      "navigationNode": "upper_spiral_ramp",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ],
+      "displayX": 130.5,
+      "displayY": 5,
+      "verification": "user_confirmed"
+    },
+    {
+      "id": "bwc_feminino_superior",
+      "name": "BWC Feminino",
+      "type": "restroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 84,
+      "y": 19,
+      "z": 1,
+      "navigationNode": "upper_bwc_fem",
+      "verification": "floorplan",
+      "evidenceCaptureIds": [],
+      "displayX": 85,
+      "displayY": 56
+    },
+    {
+      "id": "bwc_masculino_superior",
+      "name": "BWC Masculino",
+      "type": "restroom",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 84,
+      "y": 31,
+      "z": 1,
+      "navigationNode": "upper_bwc_masc",
+      "verification": "floorplan",
+      "evidenceCaptureIds": [],
+      "displayX": 84,
+      "displayY": 65.8
+    },
+    {
+      "id": "arquivo_superior",
+      "name": "Arquivo",
+      "type": "archive",
+      "sector": "Piso Superior",
+      "floor": 1,
+      "x": 40,
+      "y": 8,
+      "z": 1,
+      "navigationNode": "upper_archive",
+      "verification": "floorplan",
+      "evidenceCaptureIds": [],
+      "displayX": 54.8,
+      "displayY": 10.5
+    },
+    {
+      "id": "labs_quimica_entrada_gran",
+      "name": "Laboratórios de Química na Entrada Gran",
+      "type": "laboratory",
+      "sector": "Entrada Gran · conjunto aproximado",
+      "floor": 0,
+      "z": 0,
+      "navigationNode": "ground_labs_quimica_entrada",
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": [],
+      "displayX": 15,
+      "displayY": 84,
+      "x": 7,
+      "y": 38
+    },
+    {
+      "id": "labs_quimica_sala_rampa",
+      "name": "Laboratórios de Química próximos à sala com rampa",
+      "type": "laboratory",
+      "sector": "Ao lado da sala com rampa · conjunto aproximado",
+      "floor": 0,
+      "z": 0,
+      "navigationNode": "ground_labs_quimica_rampa",
+      "verification": "user_reported_approximate",
+      "evidenceCaptureIds": [],
+      "displayX": 12,
+      "displayY": 59,
+      "x": 4,
+      "y": 22
+    }
+  ],
+  "nodes": [
+    {
+      "id": "ground_c1_start",
+      "floor": 0,
+      "x": 0,
+      "y": 32,
+      "z": 0,
+      "type": "entrance",
+      "displayX": 8,
+      "displayY": 78
+    },
+    {
+      "id": "ground_c1_first",
+      "floor": 0,
+      "x": 8,
+      "y": 32,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 16,
+      "displayY": 78
+    },
+    {
+      "id": "ground_c1_room_ramp",
+      "floor": 0,
+      "x": 10,
+      "y": 26,
+      "z": 0,
+      "type": "ramp",
+      "displayX": 26,
+      "displayY": 60
+    },
+    {
+      "id": "ground_c1_turn",
+      "floor": 0,
+      "x": 14,
+      "y": 32,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 24,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_after_turn",
+      "floor": 0,
+      "x": 18,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 30,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_0",
+      "floor": 0,
+      "x": 28,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 40,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_1",
+      "floor": 0,
+      "x": 40,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 51.5,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_2",
+      "floor": 0,
+      "x": 52,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 63,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_3",
+      "floor": 0,
+      "x": 64,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 74.5,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_4",
+      "floor": 0,
+      "x": 76,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 86,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_spine_5",
+      "floor": 0,
+      "x": 86,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 97.5,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c1_door_0",
+      "floor": 0,
+      "x": 28,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 40,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_door_1",
+      "floor": 0,
+      "x": 40,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 51.5,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_door_2",
+      "floor": 0,
+      "x": 52,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 63,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_door_3",
+      "floor": 0,
+      "x": 64,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 74.5,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_door_4",
+      "floor": 0,
+      "x": 76,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 86,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_door_5",
+      "floor": 0,
+      "x": 86,
+      "y": 42,
+      "z": 0,
+      "type": "door",
+      "displayX": 97.5,
+      "displayY": 76
+    },
+    {
+      "id": "ground_c1_end",
+      "floor": 0,
+      "x": 90,
+      "y": 34,
+      "z": 0,
+      "type": "opening",
+      "displayX": 104,
+      "displayY": 70
+    },
+    {
+      "id": "ground_c2_start",
+      "floor": 0,
+      "x": 0,
+      "y": 12,
+      "z": 0,
+      "type": "entrance",
+      "displayX": 8,
+      "displayY": 28
+    },
+    {
+      "id": "ground_secretaria_door",
+      "floor": 0,
+      "x": 5,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 8.75,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_spine_0",
+      "floor": 0,
+      "x": 14,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 20,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_1",
+      "floor": 0,
+      "x": 20,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 27,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_2",
+      "floor": 0,
+      "x": 26,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 34,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_3",
+      "floor": 0,
+      "x": 32,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 41,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_4",
+      "floor": 0,
+      "x": 38,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 48,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_5",
+      "floor": 0,
+      "x": 44,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 55,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_6",
+      "floor": 0,
+      "x": 50,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 62,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_7",
+      "floor": 0,
+      "x": 56,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 69,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_8",
+      "floor": 0,
+      "x": 62,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 76,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_9",
+      "floor": 0,
+      "x": 68,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 83,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_10",
+      "floor": 0,
+      "x": 74,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 90,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_spine_11",
+      "floor": 0,
+      "x": 80,
+      "y": 12,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 97,
+      "displayY": 28
+    },
+    {
+      "id": "ground_c2_door_0",
+      "floor": 0,
+      "x": 14,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 20,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_1",
+      "floor": 0,
+      "x": 20,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 27,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_door_2",
+      "floor": 0,
+      "x": 26,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 34,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_3",
+      "floor": 0,
+      "x": 32,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 41,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_door_4",
+      "floor": 0,
+      "x": 38,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 48,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_5",
+      "floor": 0,
+      "x": 44,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 55,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_door_6",
+      "floor": 0,
+      "x": 50,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 62,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_7",
+      "floor": 0,
+      "x": 56,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 69,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_door_8",
+      "floor": 0,
+      "x": 62,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 76,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_9",
+      "floor": 0,
+      "x": 68,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 83,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_door_10",
+      "floor": 0,
+      "x": 74,
+      "y": 18,
+      "z": 0,
+      "type": "door",
+      "displayX": 90,
+      "displayY": 39
+    },
+    {
+      "id": "ground_c2_door_11",
+      "floor": 0,
+      "x": 80,
+      "y": 6,
+      "z": 0,
+      "type": "door",
+      "displayX": 97,
+      "displayY": 17
+    },
+    {
+      "id": "ground_c2_end",
+      "floor": 0,
+      "x": 90,
+      "y": 12,
+      "z": 0,
+      "type": "opening",
+      "displayX": 104,
+      "displayY": 28
+    },
+    {
+      "id": "ground_court_west_north",
+      "floor": 0,
+      "x": 98,
+      "y": 32,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 110,
+      "displayY": 70
+    },
+    {
+      "id": "ground_court_west_mid",
+      "floor": 0,
+      "x": 98,
+      "y": 23,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 110,
+      "displayY": 44
+    },
+    {
+      "id": "ground_court_west_south",
+      "floor": 0,
+      "x": 98,
+      "y": 14,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 110,
+      "displayY": 20
+    },
+    {
+      "id": "ground_court_east_north",
+      "floor": 0,
+      "x": 118,
+      "y": 32,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 141,
+      "displayY": 70
+    },
+    {
+      "id": "ground_court_east_south",
+      "floor": 0,
+      "x": 118,
+      "y": 14,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 141,
+      "displayY": 20
+    },
+    {
+      "id": "ground_snack_bar",
+      "floor": 0,
+      "x": 96,
+      "y": 39,
+      "z": 0,
+      "type": "service",
+      "displayX": 120,
+      "displayY": 78
+    },
+    {
+      "id": "ground_services_north",
+      "floor": 0,
+      "x": 124,
+      "y": 30,
+      "z": 0,
+      "type": "service",
+      "displayX": 147,
+      "displayY": 59
+    },
+    {
+      "id": "ground_services_mid",
+      "floor": 0,
+      "x": 124,
+      "y": 23,
+      "z": 0,
+      "type": "service",
+      "displayX": 147,
+      "displayY": 44
+    },
+    {
+      "id": "ground_services_south",
+      "floor": 0,
+      "x": 124,
+      "y": 16,
+      "z": 0,
+      "type": "service",
+      "displayX": 147,
+      "displayY": 28.5
+    },
+    {
+      "id": "ground_spiral_ramp_landing",
+      "floor": 0,
+      "x": 124,
+      "y": 8,
+      "z": 0,
+      "type": "ramp",
+      "displayX": 131.5,
+      "displayY": 78
+    },
+    {
+      "id": "ground_ramp_run_1",
+      "floor": 0,
+      "x": 116,
+      "y": 8,
+      "z": 0.25,
+      "type": "ramp",
+      "displayX": 131.5,
+      "displayY": 83
+    },
+    {
+      "id": "ground_ramp_landing_mid",
+      "floor": 0,
+      "x": 116,
+      "y": 14,
+      "z": 0.45,
+      "type": "ramp",
+      "displayX": 131.5,
+      "displayY": 88
+    },
+    {
+      "id": "upper_gate",
+      "floor": 1,
+      "x": 0,
+      "y": 25,
+      "z": 1,
+      "type": "entrance",
+      "displayX": 2.5,
+      "displayY": 44
+    },
+    {
+      "id": "upper_spine_0",
+      "floor": 1,
+      "x": 12,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 10.65,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_1",
+      "floor": 1,
+      "x": 20,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 23.75,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_2",
+      "floor": 1,
+      "x": 28,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 36.55,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_3",
+      "floor": 1,
+      "x": 36,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 49.4,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_4",
+      "floor": 1,
+      "x": 44,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 68.65,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_5",
+      "floor": 1,
+      "x": 52,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 95.45,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_spine_6",
+      "floor": 1,
+      "x": 60,
+      "y": 29,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 110.65,
+      "displayY": 61.3
+    },
+    {
+      "id": "upper_spine_7",
+      "floor": 1,
+      "x": 68,
+      "y": 29,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 127.80000000000001,
+      "displayY": 61.3
+    },
+    {
+      "id": "upper_spine_8",
+      "floor": 1,
+      "x": 76,
+      "y": 29,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 143.79999999999998,
+      "displayY": 61.3
+    },
+    {
+      "id": "upper_door_0",
+      "floor": 1,
+      "x": 12,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 10.65,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_1",
+      "floor": 1,
+      "x": 20,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 23.75,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_2",
+      "floor": 1,
+      "x": 28,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 36.55,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_3",
+      "floor": 1,
+      "x": 36,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 49.4,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_4",
+      "floor": 1,
+      "x": 44,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 68.65,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_5",
+      "floor": 1,
+      "x": 52,
+      "y": 31,
+      "z": 1,
+      "type": "door",
+      "displayX": 95.45,
+      "displayY": 56
+    },
+    {
+      "id": "upper_door_6",
+      "floor": 1,
+      "x": 60,
+      "y": 35,
+      "z": 1,
+      "type": "door",
+      "displayX": 110.65,
+      "displayY": 65.7
+    },
+    {
+      "id": "upper_door_7",
+      "floor": 1,
+      "x": 68,
+      "y": 35,
+      "z": 1,
+      "type": "door",
+      "displayX": 127.80000000000001,
+      "displayY": 65.7
+    },
+    {
+      "id": "upper_door_8",
+      "floor": 1,
+      "x": 76,
+      "y": 35,
+      "z": 1,
+      "type": "door",
+      "displayX": 143.79999999999998,
+      "displayY": 65.7
+    },
+    {
+      "id": "upper_end",
+      "floor": 1,
+      "x": 90,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 153,
+      "displayY": 61.3
+    },
+    {
+      "id": "upper_agronomy",
+      "floor": 1,
+      "x": 110,
+      "y": 30,
+      "z": 1,
+      "type": "outdoor",
+      "displayX": 96.5,
+      "displayY": 16
+    },
+    {
+      "id": "upper_ramp_approach",
+      "floor": 1,
+      "x": 108,
+      "y": 18,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 130.5,
+      "displayY": 20
+    },
+    {
+      "id": "upper_ramp_run_2",
+      "floor": 1,
+      "x": 124,
+      "y": 14,
+      "z": 0.75,
+      "type": "ramp",
+      "displayX": 130.5,
+      "displayY": 14
+    },
+    {
+      "id": "upper_spiral_ramp",
+      "floor": 1,
+      "x": 124,
+      "y": 8,
+      "z": 1,
+      "type": "ramp",
+      "displayX": 130.5,
+      "displayY": 5
+    },
+    {
+      "id": "upper_service_spine",
+      "floor": 1,
+      "x": 84,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 82.5,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_archive_approach",
+      "floor": 1,
+      "x": 40,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 54.8,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_bwc_fem",
+      "floor": 1,
+      "x": 84,
+      "y": 19,
+      "z": 1,
+      "type": "service",
+      "displayX": 85,
+      "displayY": 56
+    },
+    {
+      "id": "upper_bwc_masc",
+      "floor": 1,
+      "x": 84,
+      "y": 31,
+      "z": 1,
+      "type": "service",
+      "displayX": 84,
+      "displayY": 65.8
+    },
+    {
+      "id": "upper_archive",
+      "floor": 1,
+      "x": 40,
+      "y": 8,
+      "z": 1,
+      "type": "service",
+      "displayX": 54.8,
+      "displayY": 10.5
+    },
+    {
+      "id": "ground_labs_quimica_entry_approach",
+      "floor": 0,
+      "x": 7,
+      "y": 32,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 15,
+      "displayY": 78
+    },
+    {
+      "id": "ground_labs_quimica_entrada",
+      "floor": 0,
+      "x": 7,
+      "y": 38,
+      "z": 0,
+      "type": "service",
+      "displayX": 15,
+      "displayY": 84
+    },
+    {
+      "id": "ground_labs_quimica_ramp_corner",
+      "floor": 0,
+      "x": 8,
+      "y": 32,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 18,
+      "displayY": 70
+    },
+    {
+      "id": "ground_labs_quimica_ramp_approach",
+      "floor": 0,
+      "x": 8,
+      "y": 22,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 18,
+      "displayY": 59
+    },
+    {
+      "id": "ground_labs_quimica_rampa",
+      "floor": 0,
+      "x": 4,
+      "y": 22,
+      "z": 0,
+      "type": "service",
+      "displayX": 12,
+      "displayY": 59
+    },
+    {
+      "id": "ground_ramp_access_corner",
+      "floor": 0,
+      "x": 124,
+      "y": 34,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 131.5,
+      "displayY": 70
+    },
+    {
+      "id": "ground_snack_front",
+      "floor": 0,
+      "x": 96,
+      "y": 34,
+      "z": 0,
+      "type": "open_area",
+      "displayX": 120,
+      "displayY": 70
+    },
+    {
+      "id": "ground_services_north_approach",
+      "floor": 0,
+      "x": 122,
+      "y": 30,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 141,
+      "displayY": 59
+    },
+    {
+      "id": "ground_services_mid_approach",
+      "floor": 0,
+      "x": 122,
+      "y": 23,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 141,
+      "displayY": 44
+    },
+    {
+      "id": "ground_services_south_approach",
+      "floor": 0,
+      "x": 122,
+      "y": 16,
+      "z": 0,
+      "type": "corridor",
+      "displayX": 141,
+      "displayY": 28.5
+    },
+    {
+      "id": "upper_gallery_turn",
+      "floor": 1,
+      "x": 56,
+      "y": 25,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 104.7,
+      "displayY": 51.5
+    },
+    {
+      "id": "upper_gallery_step",
+      "floor": 1,
+      "x": 56,
+      "y": 29,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 104.7,
+      "displayY": 61.3
+    },
+    {
+      "id": "upper_bwc_passage",
+      "floor": 1,
+      "x": 84,
+      "y": 27,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 82.5,
+      "displayY": 62.5
+    },
+    {
+      "id": "upper_south_access_corner",
+      "floor": 1,
+      "x": 56,
+      "y": 18,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 104.7,
+      "displayY": 20
+    },
+    {
+      "id": "upper_agronomy_approach",
+      "floor": 1,
+      "x": 110,
+      "y": 18,
+      "z": 1,
+      "type": "corridor",
+      "displayX": 96.5,
+      "displayY": 20
+    },
+    {
+      "id": "upper_open_west",
+      "floor": 1,
+      "x": 24,
+      "y": 18,
+      "z": 1,
+      "type": "open_area",
+      "displayX": 30,
+      "displayY": 35
+    },
+    {
+      "id": "upper_open_center",
+      "floor": 1,
+      "x": 44,
+      "y": 18,
+      "z": 1,
+      "type": "open_area",
+      "displayX": 70,
+      "displayY": 35
+    },
+    {
+      "id": "upper_open_east",
+      "floor": 1,
+      "x": 76,
+      "y": 18,
+      "z": 1,
+      "type": "open_area",
+      "displayX": 115,
+      "displayY": 35
+    }
+  ],
+  "edges": [
+    {
+      "from": "ground_c1_start",
+      "to": "ground_c1_first",
+      "distance": 8,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_first",
+      "to": "ground_c1_room_ramp",
+      "distance": 6.5,
+      "type": "ramp_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_first",
+      "to": "ground_c1_turn",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_turn",
+      "to": "ground_c1_after_turn",
+      "distance": 4.5,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_after_turn",
+      "to": "ground_c1_spine_0",
+      "distance": 10,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_0",
+      "to": "ground_c1_spine_1",
+      "distance": 12,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_1",
+      "to": "ground_c1_spine_2",
+      "distance": 12,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_2",
+      "to": "ground_c1_spine_3",
+      "distance": 12,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_3",
+      "to": "ground_c1_spine_4",
+      "distance": 12,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_4",
+      "to": "ground_c1_spine_5",
+      "distance": 10,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_5",
+      "to": "ground_c1_end",
+      "distance": 4,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_entrada_gran_180941"
+      ]
+    },
+    {
+      "from": "ground_c1_spine_0",
+      "to": "ground_c1_door_0",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_spine_1",
+      "to": "ground_c1_door_1",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_spine_2",
+      "to": "ground_c1_door_2",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_spine_3",
+      "to": "ground_c1_door_3",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_spine_4",
+      "to": "ground_c1_door_4",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_spine_5",
+      "to": "ground_c1_door_5",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_start",
+      "to": "ground_secretaria_door",
+      "distance": 8,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_start",
+      "to": "ground_c2_spine_0",
+      "distance": 14,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_0",
+      "to": "ground_c2_spine_1",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_1",
+      "to": "ground_c2_spine_2",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_2",
+      "to": "ground_c2_spine_3",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_3",
+      "to": "ground_c2_spine_4",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_4",
+      "to": "ground_c2_spine_5",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_5",
+      "to": "ground_c2_spine_6",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_6",
+      "to": "ground_c2_spine_7",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_7",
+      "to": "ground_c2_spine_8",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_8",
+      "to": "ground_c2_spine_9",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_9",
+      "to": "ground_c2_spine_10",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_10",
+      "to": "ground_c2_spine_11",
+      "distance": 6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_11",
+      "to": "ground_c2_end",
+      "distance": 10,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_corredor_entrada_tyto_182059"
+      ]
+    },
+    {
+      "from": "ground_c2_spine_0",
+      "to": "ground_c2_door_0",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_1",
+      "to": "ground_c2_door_1",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_2",
+      "to": "ground_c2_door_2",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_3",
+      "to": "ground_c2_door_3",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_4",
+      "to": "ground_c2_door_4",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_5",
+      "to": "ground_c2_door_5",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_6",
+      "to": "ground_c2_door_6",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_7",
+      "to": "ground_c2_door_7",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_8",
+      "to": "ground_c2_door_8",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_9",
+      "to": "ground_c2_door_9",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_10",
+      "to": "ground_c2_door_10",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_spine_11",
+      "to": "ground_c2_door_11",
+      "distance": 6,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_end",
+      "to": "ground_court_west_north",
+      "distance": 8.5,
+      "type": "opening",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c2_end",
+      "to": "ground_court_west_south",
+      "distance": 8.5,
+      "type": "opening",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_west_north",
+      "to": "ground_court_west_mid",
+      "distance": 9,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_west_mid",
+      "to": "ground_court_west_south",
+      "distance": 9,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_west_north",
+      "to": "ground_court_east_north",
+      "distance": 20,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_west_south",
+      "to": "ground_court_east_south",
+      "distance": 20,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_east_north",
+      "to": "ground_services_north_approach",
+      "distance": 6.5,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_north_approach",
+      "to": "ground_services_mid_approach",
+      "distance": 7,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_mid_approach",
+      "to": "ground_services_south_approach",
+      "distance": 7,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_reported",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_south_approach",
+      "to": "ground_court_east_south",
+      "distance": 6.5,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_spiral_ramp_landing",
+      "to": "ground_ramp_run_1",
+      "distance": 8.5,
+      "type": "ramp",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "from": "ground_ramp_run_1",
+      "to": "ground_ramp_landing_mid",
+      "distance": 6.5,
+      "type": "ramp",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "from": "ground_c1_end",
+      "to": "ground_snack_bar",
+      "distance": 7.5,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_gate",
+      "to": "upper_spine_0",
+      "distance": 9.25,
+      "type": "entrance",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_0",
+      "to": "upper_spine_1",
+      "distance": 13.1,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_1",
+      "to": "upper_spine_2",
+      "distance": 12.75,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_2",
+      "to": "upper_spine_3",
+      "distance": 12.8,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_3",
+      "to": "upper_archive_approach",
+      "distance": 12.6,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_archive_approach",
+      "to": "upper_spine_4",
+      "distance": 6.55,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_4",
+      "to": "upper_service_spine",
+      "distance": 16.8,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_service_spine",
+      "to": "upper_spine_5",
+      "distance": 10.1,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_6",
+      "to": "upper_spine_7",
+      "distance": 17.1,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_7",
+      "to": "upper_spine_8",
+      "distance": 15.9,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_8",
+      "to": "upper_end",
+      "distance": 9.4,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_0",
+      "to": "upper_door_0",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_1",
+      "to": "upper_door_1",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_2",
+      "to": "upper_door_2",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_3",
+      "to": "upper_door_3",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_4",
+      "to": "upper_door_4",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_5",
+      "to": "upper_door_5",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_6",
+      "to": "upper_door_6",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_7",
+      "to": "upper_door_7",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_8",
+      "to": "upper_door_8",
+      "distance": 10,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_service_spine",
+      "to": "upper_bwc_fem",
+      "distance": 14.25,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_archive_approach",
+      "to": "upper_archive",
+      "distance": 36,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spiral_ramp",
+      "to": "upper_ramp_run_2",
+      "distance": 12,
+      "type": "ramp",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "from": "upper_ramp_run_2",
+      "to": "upper_ramp_approach",
+      "distance": 11,
+      "type": "ramp",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "from": "ground_ramp_landing_mid",
+      "to": "upper_spiral_ramp",
+      "distance": 9,
+      "type": "ramp",
+      "accessible": true,
+      "verification": "observed_video",
+      "evidenceCaptureIds": [
+        "capture_rampa_subida_181233"
+      ]
+    },
+    {
+      "from": "ground_c1_start",
+      "to": "ground_labs_quimica_entry_approach",
+      "distance": 6,
+      "type": "provisional_access",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_labs_quimica_entry_approach",
+      "to": "ground_labs_quimica_entrada",
+      "distance": 6,
+      "type": "provisional_access",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_turn",
+      "to": "ground_labs_quimica_ramp_corner",
+      "distance": 8,
+      "type": "provisional_access",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_labs_quimica_ramp_corner",
+      "to": "ground_labs_quimica_ramp_approach",
+      "distance": 10,
+      "type": "provisional_access",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_labs_quimica_ramp_approach",
+      "to": "ground_labs_quimica_rampa",
+      "distance": 4,
+      "type": "provisional_access",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_c1_end",
+      "to": "ground_ramp_access_corner",
+      "distance": 34,
+      "type": "ramp_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_ramp_access_corner",
+      "to": "ground_spiral_ramp_landing",
+      "distance": 26,
+      "type": "ramp_access",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_court_west_north",
+      "to": "ground_snack_front",
+      "distance": 10,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_snack_front",
+      "to": "ground_ramp_access_corner",
+      "distance": 11.5,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_north_approach",
+      "to": "ground_services_north",
+      "distance": 2,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_mid_approach",
+      "to": "ground_services_mid",
+      "distance": 2,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_services_south_approach",
+      "to": "ground_services_south",
+      "distance": 2,
+      "type": "door",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_5",
+      "to": "upper_gallery_turn",
+      "distance": 4.5,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_gallery_turn",
+      "to": "upper_gallery_step",
+      "distance": 4,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_gallery_step",
+      "to": "upper_spine_6",
+      "distance": 3.5,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_service_spine",
+      "to": "upper_bwc_passage",
+      "distance": 2,
+      "type": "corridor",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_bwc_passage",
+      "to": "upper_bwc_masc",
+      "distance": 2,
+      "type": "door",
+      "accessible": true,
+      "verification": "floorplan",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_gallery_turn",
+      "to": "upper_south_access_corner",
+      "distance": 7,
+      "type": "ramp_access",
+      "accessible": true,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_south_access_corner",
+      "to": "upper_ramp_approach",
+      "distance": 52,
+      "type": "ramp_access",
+      "accessible": true,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_south_access_corner",
+      "to": "upper_agronomy_approach",
+      "distance": 54,
+      "type": "outdoor",
+      "accessible": true,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_agronomy_approach",
+      "to": "upper_agronomy",
+      "distance": 12,
+      "type": "provisional_access",
+      "accessible": true,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_0",
+      "to": "upper_open_west",
+      "distance": 11,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_2",
+      "to": "upper_open_west",
+      "distance": 9,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_archive_approach",
+      "to": "upper_open_center",
+      "distance": 10,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_3",
+      "to": "upper_open_center",
+      "distance": 13,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_4",
+      "to": "upper_open_center",
+      "distance": 8,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_5",
+      "to": "upper_open_east",
+      "distance": 13,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_gallery_turn",
+      "to": "upper_open_east",
+      "distance": 10,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_6",
+      "to": "upper_open_east",
+      "distance": 15,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_spine_8",
+      "to": "upper_open_east",
+      "distance": 20,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_west",
+      "to": "upper_open_center",
+      "distance": 20,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_center",
+      "to": "upper_open_east",
+      "distance": 22,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_center",
+      "to": "upper_agronomy_approach",
+      "distance": 15,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_east",
+      "to": "upper_agronomy_approach",
+      "distance": 10,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_east",
+      "to": "upper_ramp_approach",
+      "distance": 11,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "upper_open_east",
+      "to": "upper_south_access_corner",
+      "distance": 8,
+      "type": "open_area",
+      "accessible": false,
+      "verification": "access_unverified",
+      "evidenceCaptureIds": []
+    }
+  ]
+}

@@ -136,12 +136,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
                 children: [
-                  const GranMapPageHeader(
-                    eyebrow: 'Personalização',
-                    title: 'Edite sua jornada',
-                    subtitle: 'Esses dados deixam horários, turmas e atalhos mais relevantes para você.',
-                  ),
-                  const SizedBox(height: 22),
                   GranMapFadeSlide(
                     child: GranMapSurface(
                       child: Column(
@@ -156,7 +150,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  'Identidade acadêmica',
+                                  'Dados acadêmicos',
                                   style: Theme.of(context).textTheme.titleLarge,
                                 ),
                               ),
@@ -190,6 +184,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           if (_loadingCourses) const LinearProgressIndicator(),
                           DropdownButtonFormField<String>(
                             initialValue: _course,
+                            isExpanded: true,
                             decoration: const InputDecoration(
                               labelText: 'Curso',
                               prefixIcon: Icon(Icons.school_outlined),

@@ -25,9 +25,9 @@ def _status_payload():
         "checks": checks,
         "missing": missing,
         "message": (
-            "Integrações e validações comerciais concluídas."
+            "Integrações e validações institucionais concluídas."
             if not missing
-            else "A demo continua funcional; o lançamento comercial aguarda dependências externas."
+            else "Sistema em operação; integrações institucionais opcionais aguardando configuração."
         ),
     }
 

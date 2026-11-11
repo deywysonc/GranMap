@@ -7,7 +7,7 @@ import 'package:granmap/navigation/a_star.dart';
 import 'package:granmap/navigation/navigation_service.dart';
 
 Future<CampusMap> loadCorrectedCampus() async {
-  final raw = await File('assets/maps/gran_tiete_upper_floorplan_v11.json')
+  final raw = await File('assets/maps/gran_tiete_floorplan_v12.json')
       .readAsString();
   return CampusMap.fromJson(jsonDecode(raw) as Map<String, dynamic>);
 }
@@ -20,7 +20,7 @@ void main() {
   });
 
   test('declara explicitamente que geometria e distâncias são provisórias', () {
-    expect(campus.building.version, '0.11-upper-floorplan-v11');
+    expect(campus.building.version, '0.12-floorplan-v12');
     expect(campus.metadata.roomCatalogStatus, 'real');
     expect(campus.metadata.geometryStatus, 'floorplan_relative');
     expect(campus.metadata.distanceStatus, 'provisional');
@@ -28,11 +28,11 @@ void main() {
     expect(campus.metadata.hasValidatedMetricGeometry, isFalse);
     expect(
       campus.metadata.mapMode,
-      'upper_floorplan_relative_with_navigation_topology',
+      'architectural_floorplan_with_provisional_ground',
     );
     expect(
       campus.metadata.surveyStatus,
-      'upper_floorplan_pdf_plus_four_walkthroughs_and_author_corrections_v11',
+      'upper_pdf_and_author_spatial_corrections_v12',
     );
   });
 
@@ -95,7 +95,7 @@ void main() {
     final tytoEnd = campus.nodeById('ground_c2_end')!;
 
     expect(granStart.displayX, lessThan(granEnd.displayX));
-    expect(granStart.displayY, closeTo(granEnd.displayY, 5));
+    expect(granStart.displayY, closeTo(granEnd.displayY, 8));
     expect(tytoStart.displayX, lessThan(tytoEnd.displayX));
     expect(tytoStart.displayY, closeTo(tytoEnd.displayY, .1));
     expect(granStart.displayY, greaterThan(tytoStart.displayY));
@@ -125,8 +125,8 @@ void main() {
     );
 
     expect(roomRamp.displayX, greaterThan(turn.displayX));
-    expect(roomRamp.displayY, greaterThan(turn.displayY));
-    expect(doors.every((door) => door.displayY < 70), isTrue);
+    expect(roomRamp.displayY, lessThan(turn.displayY));
+    expect(doors.every((door) => door.displayY > 70), isTrue);
   });
 
   test(
@@ -214,7 +214,11 @@ void main() {
     for (var index = 1; index < doors.length; index++) {
       expect(doors[index].displayX, greaterThan(doors[index - 1].displayX));
     }
-    expect(doors.map((door) => door.displayY).toSet(), hasLength(1));
+    expect(doors.take(6).map((door) => door.displayY).toSet(), hasLength(1));
+    expect(
+      doors.skip(6).every((door) => door.displayY > doors.first.displayY),
+      isTrue,
+    );
 
     final upperZoneIds = campus.zones
         .where((zone) => zone.floor == 1)
@@ -232,19 +236,147 @@ void main() {
     );
   });
 
-  test('posiciona a rampa no canto inferior esquerdo do piso superior', () {
-    final ramp = campus.poiById('rampa_caracol')!;
-    final upperDoors = campus.nodes.where(
-      (node) => node.id.startsWith('upper_door_'),
-    );
+  test(
+    'reproduz profundidade menor e mudança de alinhamento à direita da planta',
+    () {
+      final zones = {for (final zone in campus.zones) zone.id: zone};
+      expect(
+        zones['zone_upper_fayol']!.height,
+        lessThan(zones['zone_upper_monteiro']!.height),
+      );
+      expect(
+        zones['zone_upper_ayrton']!.y,
+        greaterThan(zones['zone_upper_monteiro']!.y),
+      );
+      expect(
+        zones['zone_upper_bwc_masc']!.y,
+        greaterThan(zones['zone_upper_bwc_fem']!.y),
+      );
+      final route = const AStar().findPath(
+        campus: campus,
+        startNodeId: 'upper_spine_5',
+        goalNodeId: 'upper_spine_6',
+      )!;
+      expect(route.nodes.map((node) => node.id), [
+        'upper_spine_5',
+        'upper_gallery_turn',
+        'upper_gallery_step',
+        'upper_spine_6',
+      ]);
+    },
+  );
 
-    expect(ramp.floor, 1);
-    expect(ramp.displayX, lessThan(upperDoors.first.displayX));
-    expect(ramp.displayY, lessThan(upperDoors.first.displayY));
-    expect(campus.poiById('arquivo_superior'), isNotNull);
-    expect(campus.poiById('bwc_masculino_superior'), isNotNull);
-    expect(campus.poiById('bwc_feminino_superior'), isNotNull);
+  test('rotas aos serviços contornam a área de jogo da quadra', () {
+    final court = campus.zones.singleWhere(
+      (zone) => zone.id == 'zone_ground_court',
+    );
+    final route = const AStar().findPath(
+      campus: campus,
+      startNodeId: campus.poiById('entrada_gran')!.navigationNode,
+      goalNodeId: campus.poiById('financeiro')!.navigationNode,
+    )!;
+    for (var i = 0; i < route.nodes.length - 1; i++) {
+      final from = route.nodes[i];
+      final to = route.nodes[i + 1];
+      for (var step = 0; step <= 10; step++) {
+        final t = step / 10;
+        final x = from.displayX + (to.displayX - from.displayX) * t;
+        final y = from.displayY + (to.displayY - from.displayY) * t;
+        expect(
+          x > court.x &&
+              x < court.x + court.width &&
+              y > court.y &&
+              y < court.y + court.height,
+          isFalse,
+          reason: '${from.id} → ${to.id}',
+        );
+      }
+    }
   });
+
+  test('todas as salas e serviços permanecem conectados às duas entradas', () {
+    for (final origin in ['entrada_gran', 'entrada_tyto_gran']) {
+      for (final destination in campus.pois) {
+        expect(
+          const AStar().findPath(
+            campus: campus,
+            startNodeId: campus.poiById(origin)!.navigationNode,
+            goalNodeId: destination.navigationNode,
+          ),
+          isNotNull,
+          reason: '$origin → ${destination.id}',
+        );
+      }
+    }
+  });
+
+  test('acesso ao piso superior contorna a lanchonete sem atravessá-la', () {
+    final snack = campus.zones.singleWhere(
+      (zone) => zone.id == 'zone_ground_snack',
+    );
+    final route = const AStar().findPath(
+      campus: campus,
+      startNodeId: campus.poiById('entrada_gran')!.navigationNode,
+      goalNodeId: campus.poiById('van_gogh')!.navigationNode,
+    )!;
+    expect(
+      route.nodes.map((node) => node.id),
+      contains('ground_ramp_access_corner'),
+    );
+    for (var i = 0; i < route.nodes.length - 1; i++) {
+      final from = route.nodes[i];
+      final to = route.nodes[i + 1];
+      if (from.floor != 0 || to.floor != 0) continue;
+      for (var step = 0; step <= 20; step++) {
+        final t = step / 20;
+        final x = from.displayX + (to.displayX - from.displayX) * t;
+        final y = from.displayY + (to.displayY - from.displayY) * t;
+        expect(
+          x > snack.x &&
+              x < snack.x + snack.width &&
+              y > snack.y &&
+              y < snack.y + snack.height,
+          isFalse,
+          reason: '${from.id} → ${to.id}',
+        );
+      }
+    }
+  });
+
+  test(
+    'posiciona Agronomia à esquerda da rampa abaixo da galeria superior',
+    () {
+      final ramp = campus.poiById('rampa_caracol')!;
+      final agronomy = campus.pois.singleWhere(
+        (poi) => poi.navigationNode == 'upper_agronomy',
+      );
+      final upperDoors = campus.nodes.where(
+        (node) => node.id.startsWith('upper_door_'),
+      );
+
+      expect(ramp.floor, 1);
+      expect(agronomy.floor, 1);
+      expect(agronomy.displayX, lessThan(ramp.displayX));
+      expect(agronomy.displayY, lessThan(upperDoors.first.displayY));
+      expect(ramp.displayY, lessThan(upperDoors.first.displayY));
+      final route = const AStar().findPath(
+        campus: campus,
+        startNodeId: ramp.navigationNode,
+        goalNodeId: upperDoors.first.id,
+      )!;
+      expect(
+        route.nodes.map((node) => node.id),
+        contains('upper_ramp_approach'),
+      );
+      expect(
+        route.nodes.any((node) => node.id.startsWith('upper_open_')),
+        isTrue,
+      );
+      expect(campus.poiById('arquivo_superior'), isNotNull);
+      expect(campus.poiById('bwc_masculino_superior'), isNotNull);
+      expect(campus.poiById('bwc_feminino_superior'), isNotNull);
+    },
+  );
 
   test('rota entre corredores preserva a demo sem fingir conexão filmada', () {
     final path = const AStar().findPath(

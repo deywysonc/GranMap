@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -32,16 +33,35 @@ class CampusMapSnapshot {
 class CampusMapRepository {
   GranMapApi? _api;
   LocalStore? _store;
+  final AssetBundle _assets;
+  final Duration storageTimeout;
+  final Duration requestTimeout;
 
-  CampusMapRepository();
+  // Only the untouched built-in v11 seed is superseded. A publication edited
+  // through Admin, even with an older-looking name, keeps institutional priority.
+  static const _legacyV11Checksum =
+      'c950c72596f5b62989a248ed11d9b0734f1ef68fb7ae5b0c3462731e293f5c88';
+
+  CampusMapRepository({
+    GranMapApi? api,
+    LocalStore? store,
+    AssetBundle? assets,
+    this.storageTimeout = const Duration(seconds: 2),
+    this.requestTimeout = const Duration(seconds: 5),
+    // Keep injected dependencies private while exposing usable named arguments.
+    // ignore: prefer_initializing_formals
+  }) : _api = api,
+       // ignore: prefer_initializing_formals
+       _store = store,
+       _assets = assets ?? rootBundle;
 
   Future<CampusMapSnapshot> loadCampus() async {
     Map<String, dynamic>? cached;
     List<Map<String, dynamic>> cachedClosures = const [];
     try {
       final store = _store ??= LocalStore();
-      cached = await store.readPublishedMap();
-      cachedClosures = await store.readRouteClosures();
+      cached = await store.readPublishedMap().timeout(storageTimeout);
+      cachedClosures = await store.readRouteClosures().timeout(storageTimeout);
     } catch (_) {
       // Primeira abertura ou testes sem plugin seguem para rede/asset.
     }
@@ -49,9 +69,9 @@ class CampusMapRepository {
     try {
       final api = _api ??= GranMapApi();
       final store = _store ??= LocalStore();
-      final fetched = await api.fetchCurrentMapConditional(
-        etag: cached?['_etag']?.toString(),
-      );
+      final fetched = await api
+          .fetchCurrentMapConditional(etag: cached?['_etag']?.toString())
+          .timeout(requestTimeout);
       final publication = fetched.notModified ? cached : fetched.data;
       if (publication == null) {
         throw const ApiException('O cache do mapa está incompleto.', 500);
@@ -60,8 +80,8 @@ class CampusMapRepository {
 
       var closures = cachedClosures;
       try {
-        closures = await api.fetchRouteClosures();
-        await store.saveRouteClosures(closures);
+        closures = await api.fetchRouteClosures().timeout(requestTimeout);
+        unawaited(_saveSafely(() => store.saveRouteClosures(closures)));
       } catch (_) {
         // Um erro nos bloqueios não descarta uma versão válida do mapa.
       }
@@ -71,7 +91,14 @@ class CampusMapRepository {
         final stored = Map<String, dynamic>.from(publication)
           ..['_etag'] = fetched.etag
           ..['_cached_at'] = cachedAt.toIso8601String();
-        await store.savePublishedMap(stored);
+        unawaited(_saveSafely(() => store.savePublishedMap(stored)));
+      }
+      if (_isLegacySeed(publication)) {
+        return await _updatedBundled(
+          closures,
+          online: true,
+          updatedAt: cachedAt,
+        );
       }
       return CampusMapSnapshot(
         campus: CampusMap.fromJson(
@@ -90,6 +117,9 @@ class CampusMapRepository {
       if (cached != null && cached['map_data'] is Map<String, dynamic>) {
         try {
           _validatePublication(cached);
+          if (_isLegacySeed(cached)) {
+            return await _updatedBundled(cachedClosures, online: false);
+          }
           return CampusMapSnapshot(
             campus: CampusMap.fromJson(
               cached['map_data'] as Map<String, dynamic>,
@@ -110,18 +140,83 @@ class CampusMapRepository {
   }
 
   Future<CampusMapSnapshot> loadBundledCampus() async {
-    final jsonString = await rootBundle.loadString(
-      'assets/maps/gran_tiete_upper_floorplan_v11.json',
+    final jsonString = await _assets.loadString(
+      'assets/maps/gran_tiete_floorplan_v12.json',
     );
 
     final json = jsonDecode(jsonString) as Map<String, dynamic>;
     return CampusMapSnapshot(
       campus: CampusMap.fromJson(json),
       blockedEdgeIds: const {},
-      version: 'upper-floorplan-v11-bundled',
+      version: 'floorplan-v12-bundled',
       source: CampusMapSource.bundled,
       warning: 'Usando o mapa incluído no aplicativo; bloqueios recentes podem não aparecer.',
     );
+  }
+
+  Future<void> _saveSafely(Future<void> Function() save) async {
+    try {
+      await save().timeout(storageTimeout);
+    } catch (_) {
+      // Valid map data remains usable when native storage is unavailable.
+    }
+  }
+
+  bool _isLegacySeed(Map<String, dynamic> publication) =>
+      publication['version'] == 'upper-floorplan-v11' &&
+      publication['checksum'] == _legacyV11Checksum;
+
+  Future<CampusMapSnapshot> _updatedBundled(
+    List<Map<String, dynamic>> closures, {
+    required bool online,
+    DateTime? updatedAt,
+  }) async {
+    final bundled = await loadBundledCampus();
+    return CampusMapSnapshot(
+      campus: bundled.campus,
+      blockedEdgeIds: _translatedClosureIds(closures),
+      version: bundled.version,
+      source: CampusMapSource.bundled,
+      updatedAt: updatedAt,
+      warning: online
+          ? 'Planta atualizada no app • bloqueios sincronizados.'
+          : 'Planta atualizada no app • bloqueios salvos, sem conexão.',
+    );
+  }
+
+  Set<String> _translatedClosureIds(List<Map<String, dynamic>> closures) {
+    final ids = _closureIds(closures);
+    const replacements = {
+      'ground_c1_end__ground_spiral_ramp_landing': [
+        'ground_c1_end__ground_ramp_access_corner',
+        'ground_ramp_access_corner__ground_spiral_ramp_landing',
+      ],
+      'upper_spine_5__upper_spine_6': [
+        'upper_spine_5__upper_gallery_turn',
+        'upper_gallery_turn__upper_gallery_step',
+        'upper_gallery_step__upper_spine_6',
+      ],
+      'upper_service_spine__upper_bwc_masc': [
+        'upper_service_spine__upper_bwc_passage',
+        'upper_bwc_passage__upper_bwc_masc',
+      ],
+      'ground_court_east_north__ground_services_north': [
+        'ground_court_east_north__ground_services_north_approach',
+      ],
+      'ground_services_north__ground_services_mid': [
+        'ground_services_north_approach__ground_services_mid_approach',
+      ],
+      'ground_services_mid__ground_services_south': [
+        'ground_services_mid_approach__ground_services_south_approach',
+      ],
+      'ground_services_south__ground_court_east_south': [
+        'ground_services_south_approach__ground_court_east_south',
+      ],
+    };
+    for (final entry in replacements.entries) {
+      if (ids.contains(entry.key)) ids.addAll(entry.value);
+    }
+    return ids;
   }
 
   void _validatePublication(Map<String, dynamic> publication) {

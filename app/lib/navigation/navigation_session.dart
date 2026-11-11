@@ -21,7 +21,7 @@ class NavigationSession extends ChangeNotifier {
   static const double _simulationUnitsPerSecond = 12;
 
   final RouteResult route;
-  final bool autoTick;
+  final bool _autoTick;
   final PositionConfidenceEngine _confidenceEngine =
       const PositionConfidenceEngine();
 
@@ -31,9 +31,13 @@ class NavigationSession extends ChangeNotifier {
   int _segmentIndex = 0;
   double _segmentOffset = 0;
   double _playbackSpeed = 1;
+  bool _externalTracking = false;
   late PositionSample _position;
 
-  NavigationSession({required this.route, this.autoTick = true}) {
+  // Preserve the public argument name while keeping configured timer policy.
+  NavigationSession({required this.route, bool autoTick = true})
+    // ignore: prefer_initializing_formals
+    : _autoTick = autoTick {
     if (route.nodes.isEmpty) {
       throw ArgumentError.value(
         route.nodes,
@@ -51,6 +55,19 @@ class NavigationSession extends ChangeNotifier {
   int get currentFloor => _position.floor;
   bool get isPlaying => _status == NavigationSessionStatus.navigating;
   bool get hasArrived => _status == NavigationSessionStatus.arrived;
+  bool get externalTracking => _externalTracking;
+  bool get autoTick => _autoTick && !_externalTracking;
+
+  /// A physical tracker owns position until the caller explicitly selects a
+  /// preview again. Starting or resuming this session cannot run a demo timer.
+  void setExternalTracking(bool value) {
+    if (value == _externalTracking) return;
+    _timer?.cancel();
+    _clock = null;
+    _externalTracking = value;
+    if (!value && isPlaying) _status = NavigationSessionStatus.paused;
+    notifyListeners();
+  }
 
   int get currentNodeIndex {
     if (hasArrived) return route.nodes.length - 1;
@@ -132,6 +149,8 @@ class NavigationSession extends ChangeNotifier {
   /// Atualiza a sessão a partir de uma posição física já fundida e casada com
   /// o grafo. O progresso é projetado no segmento de rota mais próximo.
   void applyExternalPosition(PositionSample sample) {
+    _timer?.cancel();
+    _clock = null;
     if (route.nodes.length == 1) {
       _position = sample;
       notifyListeners();
@@ -181,7 +200,12 @@ class NavigationSession extends ChangeNotifier {
 
   /// Avança a sessão. Público para permitir replays determinísticos e testes.
   void advance(Duration elapsed) {
-    if (!isPlaying || hasArrived || elapsed <= Duration.zero) return;
+    if (_externalTracking ||
+        !isPlaying ||
+        hasArrived ||
+        elapsed <= Duration.zero) {
+      return;
+    }
 
     var movement =
         elapsed.inMicroseconds /
@@ -222,7 +246,7 @@ class NavigationSession extends ChangeNotifier {
 
   void _startClock() {
     _timer?.cancel();
-    if (!autoTick) return;
+    if (!autoTick || _externalTracking) return;
 
     _clock = Stopwatch()..start();
     _timer = Timer.periodic(const Duration(milliseconds: 32), (_) {

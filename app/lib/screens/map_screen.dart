@@ -13,12 +13,14 @@ class MapScreen extends StatefulWidget {
   final CampusMap campus;
   final VoidCallback? onSearchRequested;
   final ValueChanged<int>? onRouteModeRequested;
+  final ValueChanged<CampusPoi>? onPoiRouteRequested;
 
   const MapScreen({
     super.key,
     required this.campus,
     this.onSearchRequested,
     this.onRouteModeRequested,
+    this.onPoiRouteRequested,
   });
 
   @override
@@ -31,11 +33,29 @@ class _MapScreenState extends State<MapScreen> {
   int _floor = 0;
   int _view = 0;
   int _cameraReset = 0;
+  String? _selectedPoiId;
 
   @override
   void initState() {
     super.initState();
+    if (!widget.campus.floors.any((floor) => floor.level == _floor) &&
+        widget.campus.floors.isNotEmpty) {
+      _floor = widget.campus.floors.first.level;
+    }
     _presence.addListener(_onPresenceChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant MapScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.campus, widget.campus)) return;
+    if (!widget.campus.floors.any((floor) => floor.level == _floor) &&
+        widget.campus.floors.isNotEmpty) {
+      _floor = widget.campus.floors.first.level;
+    }
+    if (widget.campus.poiById(_selectedPoiId ?? '')?.floor != _floor) {
+      _selectedPoiId = null;
+    }
   }
 
   @override
@@ -46,6 +66,30 @@ class _MapScreenState extends State<MapScreen> {
 
   void _onPresenceChanged() {
     if (mounted) setState(() {});
+  }
+
+  void _selectPoi(CampusPoi poi) {
+    setState(() {
+      _selectedPoiId = poi.id;
+      _floor = poi.floor;
+    });
+  }
+
+  void _selectFloor(int floor) {
+    if (_floor == floor) return;
+    setState(() {
+      _floor = floor;
+      _selectedPoiId = null;
+      _cameraReset++;
+    });
+  }
+
+  void _requestCameraRoute() {
+    if (widget.onRouteModeRequested != null) {
+      widget.onRouteModeRequested!(3);
+    } else {
+      widget.onSearchRequested?.call();
+    }
   }
 
   Future<void> _handleLocationAction() async {
@@ -80,240 +124,235 @@ class _MapScreenState extends State<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final floors = widget.campus.floors.toList()
+      ..sort((a, b) => a.level.compareTo(b.level));
+    final selected = widget.campus.poiById(_selectedPoiId ?? '');
     final places = widget.campus.pois
         .where((poi) => poi.floor == _floor)
         .length;
-    final floorItems =
-        widget.campus.floors
-            .map(
-              (floor) => _SelectorItem(
-                floor.level == 0 ? 'T' : '${floor.level}º',
-                floor.level,
-              ),
-            )
-            .toList()
-          ..sort((a, b) => b.value.compareTo(a.value));
-    final mapAccuracy =
-        _floor == 1 &&
-            widget.campus.metadata.geometryStatus == 'floorplan_relative'
-        ? 'planta arquitetônica • distâncias provisórias'
-        : 'estrutura aproximada';
-    return Stack(
-      children: [
-        Positioned(
-          left: 0,
-          right: 0,
-          top: 62,
-          bottom: 154,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 320),
-            child: _view == 1
-                ? CampusTwinCanvas(
-                    key: ValueKey('twin_${_floor}_$_cameraReset'),
-                    campus: widget.campus,
-                    focusFloor: _floor,
-                  )
-                : CampusMapCanvas(
-                    key: ValueKey('map_${_floor}_$_cameraReset'),
-                    campus: widget.campus,
-                    floor: _floor,
-                    fullBleed: true,
-                  ),
-          ),
-        ),
-        const Positioned(
-          left: 0,
-          right: 0,
-          top: 0,
-          height: 140,
-          child: IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xEE050C17), Color(0x00050C17)],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: 14,
-          right: 14,
-          top: 12,
-          child: Row(
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        12,
+        12,
+        12,
+        78 + MediaQuery.viewPaddingOf(context).bottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
               Expanded(
-                child: InkWell(
-                  onTap: widget.onSearchRequested,
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xF20A1728),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: GranMapColors.line),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x55000000),
-                          blurRadius: 18,
-                          offset: Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(
-                          Icons.search_rounded,
-                          color: GranMapColors.textMuted,
-                          size: 20,
-                        ),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Buscar um destino',
-                            style: TextStyle(color: GranMapColors.textMuted),
+                child: Material(
+                  color: GranMapColors.navy,
+                  borderRadius: BorderRadius.circular(16),
+                  child: InkWell(
+                    onTap: widget.onSearchRequested,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 48,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: GranMapColors.line),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            color: GranMapColors.orange,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Para onde você vai?',
+                              style: TextStyle(color: GranMapColors.textMuted),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               _MapSquareButton(
-                icon: Icons.layers_outlined,
-                onTap: () => setState(() => _floor = _floor == 0 ? 1 : 0),
+                icon: Icons.camera_alt_outlined,
+                tooltip: 'Navegar com câmera',
+                onTap: _requestCameraRoute,
               ),
             ],
           ),
-        ),
-        Positioned(
-          left: 14,
-          top: 76,
-          child: _VerticalSelector(
-            items: floorItems,
-            selected: _floor,
-            onSelected: (value) {
-              if (widget.campus.floors.any((floor) => floor.level == value)) {
-                setState(() => _floor = value);
-              }
-            },
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SegmentedButton<int>(
+                    showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    segments: [
+                      for (final floor in floors)
+                        ButtonSegment(
+                          value: floor.level,
+                          label: Text(_floorLabel(floor.level)),
+                        ),
+                    ],
+                    selected: {_floor},
+                    onSelectionChanged: (selection) =>
+                        _selectFloor(selection.first),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('2D')),
+                  ButtonSegment(value: 1, label: Text('3D')),
+                ],
+                selected: {_view},
+                onSelectionChanged: (selection) =>
+                    setState(() => _view = selection.first),
+              ),
+            ],
           ),
-        ),
-        Positioned(
-          right: 14,
-          top: 76,
-          child: _ViewSelector(
-            selected: _view,
-            onSelected: (value) {
-              if (value > 1) {
-                widget.onRouteModeRequested?.call(value);
-                if (widget.onRouteModeRequested == null) {
+          const SizedBox(height: 10),
+          Expanded(
+            child: ClipRRect(
+              key: const ValueKey('map-explore-viewport'),
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _view == 1
+                    ? CampusTwinCanvas(
+                        key: ValueKey('twin_${_floor}_$_cameraReset'),
+                        campus: widget.campus,
+                        focusFloor: _floor,
+                        selectedPoiId: _selectedPoiId,
+                        onPoiSelected: _selectPoi,
+                      )
+                    : CampusMapCanvas(
+                        key: ValueKey('map_${_floor}_$_cameraReset'),
+                        campus: widget.campus,
+                        floor: _floor,
+                        fullBleed: true,
+                        selectedPoiId: _selectedPoiId,
+                        onPoiSelected: _selectPoi,
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (selected != null)
+            _SelectedPlaceCard(
+              poi: selected,
+              onClose: () => setState(() => _selectedPoiId = null),
+              onRoute: () {
+                if (widget.onPoiRouteRequested != null) {
+                  widget.onPoiRouteRequested!(selected);
+                } else {
                   widget.onSearchRequested?.call();
                 }
-                return;
-              }
-              setState(() => _view = value);
-            },
-          ),
-        ),
-        Positioned(
-          right: 14,
-          bottom: 188,
-          child: _MapSquareButton(
-            icon: Icons.my_location_rounded,
-            color: _locationTone,
-            tooltip: _locationTooltip,
-            onTap: () => unawaited(_handleLocationAction()),
-          ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 70,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(18, 13, 18, 16),
-            decoration: const BoxDecoration(
-              color: Color(0xF5091525),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border(top: BorderSide(color: GranMapColors.line)),
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x88000000),
-                  blurRadius: 24,
-                  offset: Offset(0, -8),
-                ),
-              ],
-            ),
-            child: Row(
+              },
+            )
+          else
+            Row(
               children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: GranMapColors.orange.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(13),
-                    border: Border.all(
-                      color: GranMapColors.orange.withValues(alpha: .25),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.map_outlined,
-                    color: GranMapColors.orange,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _floor == 0
-                            ? 'Mapa do térreo'
-                            : 'Mapa do piso superior',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        '$places locais • $mapAccuracy\n$_locationSummary',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(color: GranMapColors.textMuted),
-                      ),
-                    ],
+                  child: Text(
+                    '${_floorLabel(_floor)} · $places locais',
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: GranMapColors.textMuted),
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Buscar destino',
-                  onPressed: widget.onSearchRequested,
-                  icon: const Icon(
-                    Icons.near_me_rounded,
-                    color: GranMapColors.orange,
+                  tooltip: 'Guia e legenda do mapa',
+                  onPressed: _showMapGuide,
+                  icon: const Icon(Icons.info_outline_rounded, size: 20),
+                ),
+                IconButton(
+                  tooltip: _locationTooltip,
+                  onPressed: () => unawaited(_handleLocationAction()),
+                  icon: Icon(
+                    Icons.my_location_rounded,
+                    color: _locationTone,
+                    size: 20,
                   ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showMapGuide() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.sizeOf(context).height * .8,
+      ),
+      builder: (context) => SingleChildScrollView(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Explore a Gran Tietê',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Toque em um local para ver os detalhes e traçar a rota. Arraste para explorar e use dois dedos para ampliar.',
+                ),
+                const SizedBox(height: 16),
+                const _LegendRow(Color(0xFF8BAECD), 'Salas'),
+                const _LegendRow(Color(0xFF70B9CB), 'Laboratórios'),
+                const _LegendRow(Color(0xFF7BBDB6), 'Entradas e serviços'),
+                const _LegendRow(Color(0xFFDDA36D), 'Circulação e lanchonete'),
+                const _LegendRow(Color(0xFF87B99D), 'Áreas abertas e quadra'),
+                const _LegendRow(
+                  GranMapColors.orange,
+                  'Rota e local selecionado',
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _locationSummary,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
   String get _locationSummary => switch (_presence.snapshot.status) {
     GranPresenceStatus.inside => 'Você está na Gran Tietê',
     GranPresenceStatus.nearby =>
-      '${_presence.snapshot.distanceLabel} da Gran • toque no alvo',
+      '${_presence.snapshot.distanceLabel} da Gran Tietê',
     GranPresenceStatus.outside =>
-      '${_presence.snapshot.distanceLabel} da Gran • toque para chegar',
+      '${_presence.snapshot.distanceLabel} da Gran Tietê',
     GranPresenceStatus.permissionDenied => 'Localização sem permissão',
     GranPresenceStatus.servicesDisabled => 'GPS desligado',
-    GranPresenceStatus.uncertain => 'Confirmando sua posição',
+    GranPresenceStatus.uncertain => 'Posição atual ainda não confirmada',
     GranPresenceStatus.unavailable => 'Posição indisponível',
-    GranPresenceStatus.checking => 'Localizando você…',
+    GranPresenceStatus.checking => 'Verificando localização',
   };
 
   String get _locationTooltip => _presence.snapshot.isAway
@@ -333,150 +372,138 @@ class _MapScreenState extends State<MapScreen> {
 class _MapSquareButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final Color color;
-  final String? tooltip;
+  final String tooltip;
 
   const _MapSquareButton({
     required this.icon,
     required this.onTap,
-    this.color = GranMapColors.textMuted,
-    this.tooltip,
+    required this.tooltip,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final button = Material(
-      color: const Color(0xF20A1728),
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: GranMapColors.line),
+  Widget build(BuildContext context) => IconButton.filledTonal(
+    tooltip: tooltip,
+    onPressed: onTap,
+    icon: Icon(icon, color: GranMapColors.orange),
+    style: IconButton.styleFrom(
+      fixedSize: const Size(48, 48),
+      backgroundColor: GranMapColors.navy,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: GranMapColors.line),
+      ),
+    ),
+  );
+}
+
+class _SelectedPlaceCard extends StatelessWidget {
+  final CampusPoi poi;
+  final VoidCallback onClose;
+  final VoidCallback onRoute;
+
+  const _SelectedPlaceCard({
+    required this.poi,
+    required this.onClose,
+    required this.onRoute,
+  });
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('map-selected-place'),
+    margin: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.fromLTRB(12, 8, 8, 10),
+    decoration: BoxDecoration(
+      color: GranMapColors.navy,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: GranMapColors.orange.withValues(alpha: .35)),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                poi.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '${_placeType(poi.type)} · ${_floorLabel(poi.floor)}',
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: GranMapColors.textMuted),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: onRoute,
+                icon: const Icon(Icons.near_me_rounded, size: 17),
+                label: const Text('Ir para cá'),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ],
           ),
-          child: Icon(icon, color: color, size: 21),
         ),
-      ),
-    );
-    return tooltip == null ? button : Tooltip(message: tooltip!, child: button);
-  }
+        IconButton(
+          tooltip: 'Fechar local selecionado',
+          onPressed: onClose,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ],
+    ),
+  );
 }
 
-class _SelectorItem {
+class _LegendRow extends StatelessWidget {
+  final Color color;
   final String label;
-  final int value;
-  const _SelectorItem(this.label, this.value);
-}
 
-class _VerticalSelector extends StatelessWidget {
-  final List<_SelectorItem> items;
-  final int selected;
-  final ValueChanged<int> onSelected;
-
-  const _VerticalSelector({
-    required this.items,
-    required this.selected,
-    required this.onSelected,
-  });
+  const _LegendRow(this.color, this.label);
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xF20A1728),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: GranMapColors.line),
-      ),
-      child: Column(
-        children: [
-          for (final item in items)
-            InkWell(
-              onTap: () => onSelected(item.value),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 42,
-                height: 36,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: selected == item.value
-                      ? GranMapColors.orange.withValues(alpha: .13)
-                      : Colors.transparent,
-                  border: Border(
-                    left: BorderSide(
-                      color: selected == item.value
-                          ? GranMapColors.orange
-                          : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                child: Text(
-                  item.label,
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: selected == item.value
-                        ? GranMapColors.orange
-                        : GranMapColors.textMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
+      ],
+    ),
+  );
 }
 
-class _ViewSelector extends StatelessWidget {
-  final int selected;
-  final ValueChanged<int> onSelected;
+String _floorLabel(int floor) => floor == 0
+    ? 'Térreo'
+    : floor == 1
+    ? 'Superior'
+    : 'Piso $floor';
 
-  const _ViewSelector({required this.selected, required this.onSelected});
-
-  @override
-  Widget build(BuildContext context) {
-    const labels = ['2D', '3D', 'Walk', 'AR'];
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xF20A1728),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: GranMapColors.line),
-      ),
-      child: Column(
-        children: [
-          for (var index = 0; index < labels.length; index++)
-            Semantics(
-              button: true,
-              selected: selected == index,
-              label: 'Visual ${labels[index]}',
-              child: InkWell(
-                onTap: () => onSelected(index),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: 52,
-                  height: 40,
-                  alignment: Alignment.center,
-                  color: selected == index
-                      ? GranMapColors.orange.withValues(alpha: .13)
-                      : Colors.transparent,
-                  child: Text(
-                    labels[index],
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: selected == index
-                          ? GranMapColors.orange
-                          : GranMapColors.textMuted,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
+String _placeType(String type) => switch (type) {
+  'classroom' => 'Sala',
+  'laboratory' || 'project_laboratory' => 'Laboratório',
+  'entrance' || 'upper_entrance' => 'Entrada',
+  'library' => 'Biblioteca',
+  'administration' => 'Secretaria',
+  'finance' => 'Financeiro',
+  'restroom' => 'Banheiros',
+  'court' => 'Quadra',
+  'cafeteria' => 'Lanchonete',
+  'ramp' => 'Rampa',
+  'auditorium' => 'Auditório',
+  'agronomy' => 'Área de agronomia',
+  _ => 'Local',
+};

@@ -1,0 +1,4 @@
+# Linux entrypoint/backup scripts must remain executable text on Windows checkouts.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf

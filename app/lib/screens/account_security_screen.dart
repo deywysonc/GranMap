@@ -64,12 +64,6 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 36),
             children: [
-              const GranMapPageHeader(
-                eyebrow: 'PRIVACIDADE E ACESSO',
-                title: 'Você controla sua conta',
-                subtitle: 'Revise acessos, proteja sua senha e decida quais dados permanecem no GranMap.',
-              ),
-              const SizedBox(height: 18),
               GranMapSurface(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,7 +71,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     const GranMapSectionTitle(title: 'Sessões ativas'),
                     const SizedBox(height: 4),
                     Text(
-                      'Acessos que ainda podem usar sua conta.',
+                      'Dispositivos com acesso conectado à sua conta.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(height: 12),
@@ -85,6 +79,11 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                       const LinearProgressIndicator()
                     else if (_error != null)
                       _InlineMessage(message: _error!, onRetry: _loadSessions)
+                    else if (_sessions.isEmpty)
+                      Text(
+                        'Nenhuma sessão ativa encontrada.',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      )
                     else
                       for (final session in _sessions)
                         _SessionTile(
@@ -107,9 +106,9 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                     ),
                     const Divider(height: 1),
                     _ActionTile(
-                      icon: Icons.download_rounded,
-                      title: 'Exportar meus dados',
-                      subtitle: 'Copia um arquivo JSON com perfil, rotas e contribuições.',
+                      icon: Icons.copy_all_rounded,
+                      title: 'Copiar meus dados',
+                      subtitle: 'Copia seus dados de perfil, histórico e avisos.',
                       onTap: _busy ? null : _exportData,
                     ),
                   ],
@@ -124,7 +123,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
                   icon: Icons.delete_forever_rounded,
                   iconColor: GranMapColors.danger,
                   title: 'Excluir minha conta',
-                  subtitle: 'Remove os dados pessoais e anonimiza contribuições que precisam permanecer na auditoria.',
+                  subtitle: 'Remove seus dados pessoais e desvincula seu nome das contribuições enviadas.',
                   onTap: _busy ? null : _deleteAccount,
                 ),
               ),
@@ -191,6 +190,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
             const SizedBox(height: 10),
             TextField(
               controller: next,
+              maxLength: 128,
               obscureText: true,
               decoration: const InputDecoration(
                 labelText: 'Nova senha',
@@ -225,8 +225,10 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
     next.dispose();
     confirmation.dispose();
     if (values == null) return;
-    if (values[1].length < 10 || values[1] != values[2]) {
-      _snack('Confira a confirmação e use pelo menos 10 caracteres.');
+    if (values[1].length < 10 ||
+        values[1].length > 128 ||
+        values[1] != values[2]) {
+      _snack('Confira a confirmação e use entre 10 e 128 caracteres.');
       return;
     }
     final token = AppSession.instance.token;
@@ -249,7 +251,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
       final data = await _api.exportAccount(token);
       const encoder = JsonEncoder.withIndent('  ');
       await Clipboard.setData(ClipboardData(text: encoder.convert(data)));
-    }, success: 'Seus dados foram copiados em formato JSON.');
+    }, success: 'Seus dados foram copiados para a área de transferência.');
   }
 
   Future<void> _deleteAccount() async {
@@ -263,7 +265,7 @@ class _AccountSecurityScreenState extends State<AccountSecurityScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Favoritos, histórico e notificações serão removidos. Contribuições ficam anônimas para preservar a auditoria acadêmica.',
+              'Favoritos, histórico e notificações serão removidos, e seu nome será desvinculado das contribuições enviadas.',
             ),
             const SizedBox(height: 14),
             TextField(

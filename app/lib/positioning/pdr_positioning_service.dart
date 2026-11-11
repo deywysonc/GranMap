@@ -22,7 +22,9 @@ class PdrPositioningService implements PositioningService {
   StreamSubscription<SensorSnapshot>? _subscription;
   bool _running = false;
   late PositionSample _position;
-  int _lastSteps = 0;
+  int? _lastSteps;
+  int _generation = 0;
+  bool _sensorLease = false;
   DateTime? _lastAnchorAt;
   List<MagneticFingerprint> _magneticReferences = const [];
 
@@ -48,21 +50,36 @@ class PdrPositioningService implements PositioningService {
   Future<void> start() async {
     if (_running) return;
     _running = true;
+    final generation = ++_generation;
+    // The shared source can already contain steps from the shell or a previous
+    // session. Its first reading is a baseline, never new movement.
+    _lastSteps = null;
     await _subscription?.cancel();
+    if (!_running || generation != _generation) return;
     _subscription = sensors.snapshots.listen(_onSensor);
     try {
+      _sensorLease = true;
       await sensors.start();
+      if (!_running || generation != _generation) return;
       _controller.add(_position);
     } catch (_) {
+      if (generation != _generation) rethrow;
       _running = false;
       await _subscription?.cancel();
       _subscription = null;
+      if (_sensorLease) {
+        _sensorLease = false;
+        await sensors.stop();
+      }
       rethrow;
     }
   }
 
   void _onSensor(SensorSnapshot snapshot) {
-    final stepDelta = math.max(0, snapshot.stepCount - _lastSteps);
+    if (!_running) return;
+    final stepDelta = _lastSteps == null
+        ? 0
+        : math.max(0, snapshot.stepCount - _lastSteps!);
     _lastSteps = snapshot.stepCount;
     final radians = snapshot.headingDegrees * math.pi / 180;
     final ageSeconds = _lastAnchorAt == null
@@ -116,9 +133,14 @@ class PdrPositioningService implements PositioningService {
   Future<void> stop() async {
     if (!_running) return;
     _running = false;
-    await _subscription?.cancel();
+    _generation++;
+    _lastSteps = null;
+    final subscription = _subscription;
     _subscription = null;
-    await sensors.stop();
+    final sensorLease = _sensorLease;
+    _sensorLease = false;
+    await subscription?.cancel();
+    if (sensorLease) await sensors.stop();
   }
 
   Future<void> dispose() async {

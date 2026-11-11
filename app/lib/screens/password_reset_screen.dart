@@ -46,16 +46,20 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
                 constraints: const BoxConstraints(maxWidth: 500),
                 child: Column(
                   children: [
-                    const GranMapPageHeader(
-                      eyebrow: 'ACESSO SEGURO',
-                      title: 'Crie uma nova senha',
-                      subtitle: 'Solicite um código e use-o em até 30 minutos. Todas as sessões antigas serão encerradas.',
-                    ),
-                    const SizedBox(height: 18),
                     GranMapSurface(
                       padding: const EdgeInsets.all(20),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            'Solicite um código de verificação para redefinir sua senha. Ele vale por 30 minutos.',
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                           TextField(
                             controller: _email,
                             enabled: !_codeRequested && !_busy,
@@ -181,7 +185,9 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
       if (developmentToken != null) _token.text = developmentToken;
       setState(() {
         _codeRequested = true;
-        _message = developmentToken == null ? result['message']?.toString() : 'Ambiente de demonstração: o código foi preenchido automaticamente.';
+        _message = developmentToken == null
+            ? result['message']?.toString()
+            : 'Código preenchido para concluir a redefinição.';
       });
     });
   }
@@ -189,6 +195,7 @@ class _PasswordResetScreenState extends State<PasswordResetScreen> {
   Future<void> _confirm() async {
     if (_token.text.trim().isEmpty ||
         _password.text.length < 10 ||
+        _password.text.length > 128 ||
         _password.text != _confirmation.text) {
       setState(() {
         _error = 'Confira o código e a confirmação da nova senha.';

@@ -1,6 +1,9 @@
 from pathlib import Path
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+
+from pydantic import ValidationError
 
 import auth_router
 import db
@@ -137,6 +140,58 @@ class CommunityFlowTest(unittest.TestCase):
             authorization=self.authorization(0),
         )
         self.assertEqual(created["name"], "Administração")
+
+    def test_late_retry_cannot_replace_newer_vote(self):
+        proposal = self.create_proposal()
+        for agrees, revision in [(True, 100), (False, 102), (True, 101), (True, 100)]:
+            result = main.vote(
+                proposal["id"], main.VoteIn(agrees=agrees, intent_version=revision),
+                authorization=self.authorization(0),
+            )
+        self.assertFalse(result["my_vote"])
+        self.assertEqual(result["yes_votes"], 0)
+        self.assertEqual(result["no_votes"], 1)
+        with db.connect() as con:
+            audits = con.execute(
+                "SELECT COUNT(*) FROM audit_log WHERE action = 'proposal.voted'"
+            ).fetchone()[0]
+        self.assertEqual(audits, 2)
+
+    def test_same_revision_is_idempotent_and_scoped_to_voter(self):
+        proposal = self.create_proposal()
+        for index, agrees in [(0, True), (0, False), (1, False)]:
+            main.vote(
+                proposal["id"], main.VoteIn(agrees=agrees, intent_version=1234),
+                authorization=self.authorization(index),
+            )
+        result = main._proposal_with_votes(proposal["id"], 1)
+        self.assertEqual(result["yes_votes"], 1)
+        self.assertEqual(result["no_votes"], 1)
+
+    def test_concurrent_votes_keep_newest_revision_and_one_record(self):
+        proposal = self.create_proposal()
+
+        def submit(revision):
+            return main.vote(
+                proposal["id"],
+                main.VoteIn(agrees=revision % 2 == 0, intent_version=revision),
+                authorization=self.authorization(0),
+            )
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            list(pool.map(submit, [105, 102, 110, 101, 108, 103]))
+        result = main._proposal_with_votes(proposal["id"], 1)
+        self.assertEqual(result["yes_votes"], 1)
+        self.assertEqual(result["no_votes"], 0)
+        with db.connect() as con:
+            rows = con.execute("SELECT * FROM votes").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["intent_version"], 110)
+
+    def test_vote_revision_is_bounded_for_mobile_and_web(self):
+        for revision in [0, -1, 9007199254740992]:
+            with self.assertRaises(ValidationError):
+                main.VoteIn(agrees=True, intent_version=revision)
 
     def test_moderator_can_close_proposal(self):
         proposal = self.create_proposal()

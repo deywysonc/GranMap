@@ -2,8 +2,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:granmap/models/campus_map.dart';
 import 'package:granmap/navigation/navigation_session.dart';
 import 'package:granmap/navigation/route_result.dart';
+import 'package:granmap/positioning/position_sample.dart';
 
 void main() {
+  test('sensores desativam o relógio e qualquer avanço de simulação', () async {
+    final session = NavigationSession(route: _linearRoute())
+      ..start()
+      ..setExternalTracking(true);
+    final sample = PositionSample(
+      x: 3,
+      y: 0,
+      z: 0,
+      floor: 0,
+      headingDegrees: 0,
+      accuracyMeters: 8,
+      confidence: .45,
+      timestamp: DateTime.now(),
+    );
+    session.applyExternalPosition(sample);
+    expect(session.autoTick, isFalse);
+    session.advance(const Duration(seconds: 1));
+    await Future<void>.delayed(const Duration(milliseconds: 90));
+    expect(session.position.x, 3);
+    session.pause();
+    session.start();
+    session.advance(const Duration(seconds: 1));
+    expect(session.position.x, 3);
+    session.setExternalTracking(false);
+    expect(session.autoTick, isTrue);
+    session.start();
+    session.advance(const Duration(milliseconds: 250));
+    expect(session.position.x, closeTo(6, .01));
+    session.dispose();
+  });
   test('sessão interpola posição e métricas continuamente', () {
     final session = NavigationSession(route: _linearRoute(), autoTick: false);
 

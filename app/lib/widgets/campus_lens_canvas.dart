@@ -32,6 +32,8 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
   CameraController? _camera;
   bool _starting = false;
   String? _cameraError;
+  int _cameraGeneration = 0;
+  bool _foreground = true;
 
   bool get _cameraReady => _camera?.value.isInitialized ?? false;
 
@@ -43,20 +45,22 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (!_foreground) {
       _disposeCamera();
     }
   }
 
   Future<void> _startCamera() async {
-    if (_starting || _cameraReady) return;
+    if (_starting || _cameraReady || !_foreground) return;
+    final generation = ++_cameraGeneration;
     setState(() {
       _starting = true;
       _cameraError = null;
     });
     try {
       final cameras = await availableCameras();
+      if (!mounted || !_foreground || generation != _cameraGeneration) return;
       if (cameras.isEmpty) throw StateError('Nenhuma câmera disponível.');
       final back = cameras.where(
         (camera) => camera.lensDirection == CameraLensDirection.back,
@@ -67,17 +71,19 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
         enableAudio: false,
       );
       await controller.initialize();
-      if (!mounted) {
+      if (!mounted || !_foreground || generation != _cameraGeneration) {
         await controller.dispose();
         return;
       }
       setState(() => _camera = controller);
     } catch (error) {
-      if (mounted) {
+      if (mounted && generation == _cameraGeneration) {
         setState(() => _cameraError = _cameraMessage(error));
       }
     } finally {
-      if (mounted) setState(() => _starting = false);
+      if (mounted && generation == _cameraGeneration) {
+        setState(() => _starting = false);
+      }
     }
   }
 
@@ -90,6 +96,8 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
   }
 
   Future<void> _disposeCamera() async {
+    _cameraGeneration++;
+    _starting = false;
     final controller = _camera;
     _camera = null;
     await controller?.dispose();
@@ -98,7 +106,6 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
 
   @override
   Widget build(BuildContext context) {
-    final confidence = (widget.position.confidence * 100).round();
     return Column(
       children: [
         Expanded(
@@ -120,22 +127,25 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
                 ),
                 Positioned(
                   left: 14,
-                  top: 13,
-                  child: _LensBadge(
-                    icon: Icons.videocam_rounded,
-                    label: _cameraReady
-                        ? 'GRAN LENS • CÂMERA REAL'
-                        : 'GRAN LENS • AR DEMO',
-                    color: GranMapColors.coral,
-                  ),
-                ),
-                Positioned(
                   right: 14,
                   top: 13,
-                  child: _LensBadge(
-                    icon: Icons.center_focus_strong_rounded,
-                    label: '$confidence% TRACKING',
-                    color: GranMapColors.mint,
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _LensBadge(
+                        icon: Icons.videocam_rounded,
+                        label: _cameraReady
+                            ? 'GRAN LENS • CÂMERA REAL'
+                            : 'GRAN LENS • AR DEMO',
+                        color: GranMapColors.coral,
+                      ),
+                      const _LensBadge(
+                        icon: Icons.center_focus_strong_rounded,
+                        label: 'POSIÇÃO ESTIMADA',
+                        color: GranMapColors.mint,
+                      ),
+                    ],
                   ),
                 ),
                 Positioned(
@@ -165,8 +175,8 @@ class _CampusLensCanvasState extends State<CampusLensCanvas>
                         Expanded(
                           child: Text(
                             _cameraReady
-                                ? 'Câmera real • setas projetadas pela posição X/Y/Z e orientação.'
-                                : 'Câmera simulada • rota e tracking usam a mesma posição X/Y/Z.',
+                                ? 'Câmera real • sobreposição ilustrativa pela posição e orientação estimadas.'
+                                : 'Câmera simulada • sobreposição ilustrativa da rota.',
                             style: Theme.of(context).textTheme.labelSmall
                                 ?.copyWith(color: Colors.white),
                           ),

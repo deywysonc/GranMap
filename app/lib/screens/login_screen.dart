@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../services/app_session.dart';
 import '../services/granmap_api.dart';
-import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'register_screen.dart';
 import 'password_reset_screen.dart';
@@ -66,7 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = error.message);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _error = 'Não foi possível acessar o GranMap Backend.');
+      setState(
+        () => _error =
+            'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -89,13 +91,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       const GranMapBrandMark(size: 66),
                       const SizedBox(height: 20),
                       Text(
-                        'Bom ter você de volta.',
+                        'Entrar no GranMap',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        'Entre para sincronizar sua rotina na faculdade.',
+                        'Acesse sua grade de aulas, favoritos e avisos de sala.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -253,12 +255,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      const GranMapStatusPill(
-                        label: 'Mapa e rotas funcionam sem conta',
-                        icon: Icons.shield_outlined,
-                        color: GranMapColors.mint,
-                      ),
+                      const SizedBox(height: 14),
+                      if (Navigator.of(context).canPop())
+                        TextButton(
+                          onPressed: _loading
+                              ? null
+                              : () => Navigator.of(context).pop(false),
+                          child: const Text('Continuar sem entrar'),
+                        ),
                     ],
                   ),
                 ),

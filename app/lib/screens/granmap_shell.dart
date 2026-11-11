@@ -7,12 +7,14 @@ import '../data/campus_map_repository.dart';
 import '../models/campus_map.dart';
 import '../positioning/app_sensor_service.dart';
 import '../positioning/gran_presence_service.dart';
+import '../services/community_sync_coordinator.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'community_screen.dart';
 import 'home_screen.dart';
 import 'map_screen.dart';
 import 'profile_screen.dart';
+import 'route_screen.dart';
 import 'search_screen.dart';
 
 class GranMapShell extends StatefulWidget {
@@ -44,6 +46,8 @@ class _GranMapShellState extends State<GranMapShell>
   final Set<int> _visitedPages = {0};
   final AppSensorService _sensors = AppSensorService.instance;
   final GranPresenceService _presence = GranPresenceService.instance;
+  final CommunitySyncCoordinator _communitySync =
+      CommunitySyncCoordinator.instance;
 
   static const _items = [
     _NavItem(Icons.home_rounded, Icons.home_outlined, 'Início'),
@@ -59,6 +63,7 @@ class _GranMapShellState extends State<GranMapShell>
     WidgetsBinding.instance.addObserver(this);
     unawaited(_sensors.start());
     unawaited(_presence.start());
+    _communitySync.start();
   }
 
   @override
@@ -66,6 +71,7 @@ class _GranMapShellState extends State<GranMapShell>
     final foreground = state == AppLifecycleState.resumed;
     unawaited(_sensors.setForeground(foreground));
     unawaited(_presence.setForeground(foreground));
+    _communitySync.setForeground(foreground);
   }
 
   @override
@@ -73,13 +79,17 @@ class _GranMapShellState extends State<GranMapShell>
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_sensors.stop());
     unawaited(_presence.stop());
+    _communitySync.stop();
     super.dispose();
   }
 
   void _select(int index) {
-    if (index == _index) return;
+    if (index == _index && (index != 1 || _requestedRouteView == 0)) return;
     HapticFeedback.selectionClick();
     setState(() {
+      // Camera navigation is a destination-picking intent, not a sticky
+      // preference for every later search opened from the bottom bar.
+      if (index == 1) _requestedRouteView = 0;
       _visitedPages.add(index);
       _index = index;
     });
@@ -87,10 +97,26 @@ class _GranMapShellState extends State<GranMapShell>
 
   void _requestRouteView(int view) {
     setState(() {
-      _requestedRouteView = view;
+      _requestedRouteView = view == 2 ? 0 : view.clamp(0, 3);
       _visitedPages.add(1);
       _index = 1;
     });
+  }
+
+  void _openPoiRoute(CampusPoi poi) {
+    if (widget.campus.pois.isEmpty) return;
+    final origin =
+        widget.campus.poiById('entrada_gran') ?? widget.campus.pois.first;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RouteScreen(
+          campus: widget.campus,
+          origin: origin,
+          destination: poi,
+          blockedEdgeIds: widget.blockedEdgeIds,
+        ),
+      ),
+    );
   }
 
   @override
@@ -115,13 +141,17 @@ class _GranMapShellState extends State<GranMapShell>
               campus: widget.campus,
               onSearchRequested: () => _select(1),
               onRouteModeRequested: _requestRouteView,
+              onPoiRouteRequested: _openPoiRoute,
             )
           : const SizedBox.shrink(),
       _visitedPages.contains(3)
           ? const CommunityScreen()
           : const SizedBox.shrink(),
       _visitedPages.contains(4)
-          ? ProfileScreen(campus: widget.campus)
+          ? ProfileScreen(
+              campus: widget.campus,
+              blockedEdgeIds: widget.blockedEdgeIds,
+            )
           : const SizedBox.shrink(),
     ];
 
@@ -132,8 +162,7 @@ class _GranMapShellState extends State<GranMapShell>
           bottom: false,
           child: Column(
             children: [
-              if (widget.mapSource == CampusMapSource.cache ||
-                  widget.mapSource == CampusMapSource.bundled)
+              if (widget.mapWarning != null)
                 _MapFreshnessBanner(
                   source: widget.mapSource,
                   updatedAt: widget.mapUpdatedAt,
@@ -316,9 +345,10 @@ class _NavigationItem extends StatelessWidget {
             Text(
               item.label,
               maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: tone,
-                fontSize: 9,
+                fontSize: 10.5,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               ),
             ),

@@ -309,7 +309,8 @@ void main() {
     await _fillScreen(tester, 'register');
     await tester.enterText(find.byType(TextField).at(1), 'sem-arroba');
 
-    await tester.tap(find.text('Começar no GranMap'));
+    await tester.ensureVisible(find.text('Criar conta'));
+    await tester.tap(find.text('Criar conta'));
     await tester.pump();
 
     expect(find.text('Informe um e-mail válido.'), findsOneWidget);
@@ -363,34 +364,34 @@ void main() {
     await _showScreen(tester, RegisterScreen(session: session, api: api));
     await _fillScreen(tester, 'register');
     await tester.enterText(find.byType(TextField).at(2), '123456789');
-    await tester.ensureVisible(find.text('Começar no GranMap'));
-    await tester.tap(find.text('Começar no GranMap'));
-    await tester.pump();
-    expect(
-      find.text('Use uma senha entre 10 e 128 caracteres.'),
-      findsOneWidget,
-    );
-    expect(api.registerCalls, 0);
-  });
+  await tester.ensureVisible(find.text('Criar conta'));
+  await tester.tap(find.text('Criar conta'));
+  await tester.pump();
+  expect(
+    find.text('Use uma senha entre 10 e 128 caracteres.'),
+    findsOneWidget,
+  );
+  expect(api.registerCalls, 0);
+});
 
-  testWidgets('cadastro exige nome com pelo menos dois caracteres', (
-    tester,
-  ) async {
-    final api = _TestApi();
-    final session = AppSession(api: api, store: _MemorySessionStore());
-    addTearDown(session.dispose);
-    await _showScreen(tester, RegisterScreen(session: session, api: api));
-    await _fillScreen(tester, 'register');
-    await tester.enterText(find.byType(TextField).at(0), ' A ');
-    await tester.ensureVisible(find.text('Começar no GranMap'));
-    await tester.tap(find.text('Começar no GranMap'));
-    await tester.pump();
-    expect(
-      find.text('Informe um nome entre 2 e 100 caracteres.'),
-      findsOneWidget,
-    );
-    expect(api.registerCalls, 0);
-  });
+testWidgets('cadastro exige nome com pelo menos dois caracteres', (
+  tester,
+) async {
+  final api = _TestApi();
+  final session = AppSession(api: api, store: _MemorySessionStore());
+  addTearDown(session.dispose);
+  await _showScreen(tester, RegisterScreen(session: session, api: api));
+  await _fillScreen(tester, 'register');
+  await tester.enterText(find.byType(TextField).at(0), ' A ');
+  await tester.ensureVisible(find.text('Criar conta'));
+  await tester.tap(find.text('Criar conta'));
+  await tester.pump();
+  expect(
+    find.text('Informe um nome entre 2 e 100 caracteres.'),
+    findsOneWidget,
+  );
+  expect(api.registerCalls, 0);
+});
 
   for (final screen in ['login', 'register', 'profile']) {
     for (final failure in [false, true]) {
@@ -644,7 +645,7 @@ Widget _screen(String screen, AppSession session, GranMapApi api) =>
 
 String _submitLabel(String screen) => switch (screen) {
   'login' => 'Entrar',
-  'register' => 'Começar no GranMap',
+  'register' => 'Criar conta',
   _ => 'Salvar alterações',
 };
 
@@ -657,6 +658,7 @@ Future<void> _fillScreen(WidgetTester tester, String screen) async {
     await tester.enterText(fields.at(0), _user.name);
     await tester.enterText(fields.at(1), _user.email);
     await tester.enterText(fields.at(2), 'Senha12345!');
+    await tester.enterText(fields.at(3), _user.group);
   }
 }
 

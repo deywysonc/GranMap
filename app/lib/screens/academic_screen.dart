@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/academic.dart';
@@ -13,11 +15,17 @@ import 'route_screen.dart';
 class AcademicScreen extends StatefulWidget {
   final CampusMap campus;
   final Set<String> blockedEdgeIds;
+  final UserAcademicService? academicService;
+  final PersonalDataService? personalDataService;
+  final AppSession? session;
 
   const AcademicScreen({
     super.key,
     required this.campus,
     this.blockedEdgeIds = const {},
+    this.academicService,
+    this.personalDataService,
+    this.session,
   });
 
   @override
@@ -25,50 +33,94 @@ class AcademicScreen extends StatefulWidget {
 }
 
 class _AcademicScreenState extends State<AcademicScreen> {
-  final UserAcademicService _academic = UserAcademicService();
-  final PersonalDataService _personal = PersonalDataService();
+  late final UserAcademicService _academic;
+  late final PersonalDataService _personal;
+  late final AppSession _session;
 
   AcademicSnapshot? _snapshot;
   bool _loading = false;
+  int _loadGeneration = 0;
+  late String _scheduleScope;
 
   @override
   void initState() {
     super.initState();
-    AppSession.instance.addListener(_sessionChanged);
+    _session = widget.session ?? AppSession.instance;
+    _academic =
+        widget.academicService ?? UserAcademicService(session: _session);
+    _personal =
+        widget.personalDataService ?? PersonalDataService(session: _session);
+    _scheduleScope = _currentScheduleScope;
+    _session.addListener(_sessionChanged);
     _load();
   }
 
   @override
   void dispose() {
-    AppSession.instance.removeListener(_sessionChanged);
-    _academic.dispose();
-    _personal.dispose();
+    _session.removeListener(_sessionChanged);
+    if (widget.academicService == null) _academic.dispose();
+    if (widget.personalDataService == null) _personal.dispose();
     super.dispose();
   }
 
   void _sessionChanged() {
-    if (mounted) {
+    if (!mounted) return;
+    final scope = _currentScheduleScope;
+    if (scope == _scheduleScope) {
       setState(() {});
-      _load();
+      return;
     }
+    setState(() {
+      _scheduleScope = scope;
+      _snapshot = null;
+    });
+    _load();
+  }
+
+  String get _currentScheduleScope {
+    final session = _session;
+    final user = session.user;
+    return '${session.storageScope}|${session.token}|'
+        '${user?.course}|${user?.semester}|${user?.group}';
   }
 
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
+    final scope = _currentScheduleScope;
     setState(() => _loading = true);
-    final snapshot = await _academic.load();
-    if (!mounted) return;
-    setState(() {
-      _snapshot = snapshot;
-      _loading = false;
-    });
+    try {
+      final snapshot = await _academic.load().timeout(
+        const Duration(seconds: 10),
+      );
+      if (!_isCurrentLoad(generation, scope)) return;
+      setState(() => _snapshot = snapshot);
+    } catch (_) {
+      if (!_isCurrentLoad(generation, scope)) return;
+      setState(() {
+        _snapshot = const AcademicSnapshot(
+          classes: [],
+          source: AcademicDataSource.none,
+          message: 'Não foi possível carregar sua grade. Tente novamente.',
+        );
+      });
+    } finally {
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _loading = false);
+      }
+    }
   }
+
+  bool _isCurrentLoad(int generation, String scope) =>
+      mounted &&
+      generation == _loadGeneration &&
+      scope == _currentScheduleScope;
 
   CampusPoi get _origin =>
       widget.campus.poiById('entrada_gran') ??
       widget.campus.poiById('entrance_gran') ??
       widget.campus.pois.first;
 
-  Future<void> _navigate(AcademicClass item) async {
+  void _navigate(AcademicClass item) {
     final room = widget.campus.poiById(item.roomPoiId);
     if (room == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,8 +129,7 @@ class _AcademicScreenState extends State<AcademicScreen> {
       return;
     }
 
-    await _personal.addHistory(poiId: room.id, poiName: room.name);
-
+    unawaited(_rememberDestination(room));
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -92,9 +143,19 @@ class _AcademicScreenState extends State<AcademicScreen> {
     );
   }
 
+  Future<void> _rememberDestination(CampusPoi room) async {
+    try {
+      await _personal
+          .addHistory(poiId: room.id, poiName: room.name)
+          .timeout(const Duration(seconds: 2));
+    } catch (_) {
+      // A rota deve abrir mesmo quando o histórico não puder ser salvo.
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final session = AppSession.instance;
+    final session = _session;
     final user = session.user;
     final classes = _snapshot?.classes ?? const <AcademicClass>[];
 
@@ -113,32 +174,9 @@ class _AcademicScreenState extends State<AcademicScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      GranMapFadeSlide(
-                        child: GranMapPageHeader(
-                          eyebrow: 'Agenda',
-                          title: 'Minha vida acadêmica',
-                          subtitle: user == null
-                              ? 'Sua grade e seus caminhos no mesmo lugar.'
-                              : '${user.course} • ${user.semester}º semestre • ${user.group}',
-                          trailing: user == null
-                              ? null
-                              : GranMapStatusPill(
-                                  label: _snapshot?.isOnline == true
-                                      ? 'Atualizada'
-                                      : 'Cópia local',
-                                  icon: _snapshot?.isOnline == true
-                                      ? Icons.cloud_done_rounded
-                                      : Icons.cloud_off_rounded,
-                                  color: _snapshot?.isOnline == true
-                                      ? GranMapColors.mint
-                                      : GranMapColors.coral,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
                       if (user == null)
                         GranMapFadeSlide(
-                          delay: const Duration(milliseconds: 80),
+                          delay: const Duration(milliseconds: 60),
                           child: _AcademicGuest(
                             onLogin: () {
                               Navigator.of(context).push(
@@ -150,6 +188,36 @@ class _AcademicScreenState extends State<AcademicScreen> {
                           ),
                         )
                       else ...[
+                        GranMapFadeSlide(
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${user.course} • ${user.semester}º semestre • ${user.group}',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              GranMapStatusPill(
+                                label: _snapshot?.isOnline == true
+                                    ? 'Atualizada'
+                                    : 'Salva offline',
+                                icon: _snapshot?.isOnline == true
+                                    ? Icons.cloud_done_rounded
+                                    : Icons.cloud_off_rounded,
+                                color: _snapshot?.isOnline == true
+                                    ? GranMapColors.mint
+                                    : GranMapColors.coral,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 18),
                         _AcademicSummary(classes: classes, loading: _loading),
                         const SizedBox(height: 24),
                         const GranMapSectionTitle(title: 'Sua grade'),
@@ -160,21 +228,23 @@ class _AcademicScreenState extends State<AcademicScreen> {
                               children: [
                                 LinearProgressIndicator(),
                                 SizedBox(height: 12),
-                                Text('Sincronizando sua agenda...'),
+                                Text('Carregando sua grade...'),
                               ],
                             ),
                           )
                         else if (classes.isEmpty)
                           GranMapEmptyState(
                             icon: Icons.event_busy_rounded,
-                            title: 'Nenhuma aula encontrada',
+                            title: _snapshot?.source == AcademicDataSource.none
+                                ? 'Sua grade está indisponível'
+                                : 'Nenhuma aula encontrada',
                             message:
                                 _snapshot?.message ??
-                                'Confira seu ensalamento.',
+                                'Confira seu curso, semestre e turma no perfil.',
                             action: TextButton.icon(
                               onPressed: _load,
                               icon: const Icon(Icons.refresh_rounded),
-                              label: const Text('Atualizar'),
+                              label: const Text('Tentar novamente'),
                             ),
                           )
                         else
@@ -199,7 +269,7 @@ class _AcademicScreenState extends State<AcademicScreen> {
                           const SizedBox(height: 10),
                           Center(
                             child: Text(
-                              'Cópia local de ${_formatCache(_snapshot!.cachedAt!)}',
+                              'Atualizada em ${_formatCache(_snapshot!.cachedAt!)}',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Theme.of(context)
@@ -258,13 +328,13 @@ class _AcademicGuest extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             Text(
-              'Sua semana, sem surpresas.',
+              'Acompanhe suas aulas',
               style: Theme.of(context).textTheme.headlineMedium
                   ?.copyWith(color: Colors.white),
             ),
             const SizedBox(height: 8),
             Text(
-              'Veja horários, salas e abra a rota com um toque.',
+              'Entre com sua conta para ver horários, salas e abrir a rota direto para a aula.',
               style: Theme.of(context).textTheme.bodyLarge
                   ?.copyWith(color: Colors.white70),
             ),

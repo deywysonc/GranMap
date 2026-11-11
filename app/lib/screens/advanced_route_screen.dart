@@ -11,6 +11,7 @@ import '../positioning/app_sensor_service.dart';
 import '../positioning/gps_entrance_service.dart';
 import '../positioning/pdr_positioning_service.dart';
 import '../positioning/position_sample.dart';
+import '../positioning/sensor_service.dart';
 import '../services/granmap_api.dart';
 import '../services/app_preferences.dart';
 import '../services/app_runtime_config.dart';
@@ -19,7 +20,6 @@ import '../widgets/campus_lens_canvas.dart';
 import '../widgets/campus_map_canvas.dart';
 import '../widgets/campus_twin_canvas.dart';
 import '../widgets/granmap_ui.dart';
-import '../widgets/walk_view_canvas.dart';
 import '../widgets/anchor_scanner_sheet.dart';
 
 class AdvancedRouteScreen extends StatefulWidget {
@@ -27,6 +27,7 @@ class AdvancedRouteScreen extends StatefulWidget {
   final CampusPoi origin;
   final CampusPoi destination;
   final Set<String> blockedEdgeIds;
+  final SensorService? sensors;
 
   const AdvancedRouteScreen({
     super.key,
@@ -34,20 +35,22 @@ class AdvancedRouteScreen extends StatefulWidget {
     required this.origin,
     required this.destination,
     this.blockedEdgeIds = const {},
+    this.sensors,
   });
 
   @override
   State<AdvancedRouteScreen> createState() => _AdvancedRouteScreenState();
 }
 
-class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
+class _AdvancedRouteScreenState extends State<AdvancedRouteScreen>
+    with WidgetsBindingObserver {
   final NavigationService _navigationService = const NavigationService();
   final GranMapApi _api = GranMapApi();
 
   RouteResult? _route;
   NavigationSession? _session;
   Timer? _closureTimer;
-  AppSensorService? _deviceSensors;
+  SensorService? _deviceSensors;
   PdrPositioningService? _pdr;
   StreamSubscription<PositionSample>? _physicalPositionSubscription;
   late Set<String> _blockedEdgeIds;
@@ -58,10 +61,13 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
   bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
   int _routeView = 0;
   int _lastFeedbackSegment = -1;
+  int _positioningGeneration = 0;
+  bool _resumePhysical = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _blockedEdgeIds = {...widget.blockedEdgeIds};
     if (_blockedEdgeIds.isNotEmpty) {
       _rerouteNotice =
@@ -72,15 +78,12 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       const Duration(seconds: 15),
       (_) => _refreshClosures(),
     );
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && AppRuntimeConfig.instance.physicalPositioningEnabled) {
-        _toggleRealPositioning();
-      }
-    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _positioningGeneration++;
     _session?.removeListener(_onSessionChanged);
     _session?.dispose();
     _closureTimer?.cancel();
@@ -90,7 +93,35 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (_resumePhysical) {
+        _resumePhysical = false;
+        unawaited(_toggleRealPositioning(resuming: true));
+      }
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      if (_realPositioning || _positioningBusy) {
+        _resumePhysical = _session?.isPlaying ?? false;
+        _positioningGeneration++;
+        _session?.pause();
+        final subscription = _physicalPositionSubscription;
+        _physicalPositionSubscription = null;
+        unawaited(subscription?.cancel());
+        unawaited(_pdr?.stop());
+        setState(() {
+          _realPositioning = false;
+          _positioningBusy = false;
+        });
+      }
+    }
+  }
+
   void _configureRoute({String? startNodeId, bool resume = false}) {
+    final wasPlaying = _session?.isPlaying ?? false;
     _session?.removeListener(_onSessionChanged);
     _session?.dispose();
     _route = startNodeId == null
@@ -110,8 +141,14 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
           );
     final route = _route;
     _session = route == null ? null : NavigationSession(route: route);
+    if (_realPositioning) _session?.setExternalTracking(true);
     _session?.addListener(_onSessionChanged);
-    if (resume) scheduleMicrotask(() => _session?.start());
+    if (_realPositioning && _pdr != null) {
+      _session?.applyExternalPosition(_pdr!.current);
+      if (!wasPlaying) _session?.pause();
+    } else if (resume) {
+      _session?.start();
+    }
   }
 
   Future<void> _refreshClosures() async {
@@ -177,10 +214,10 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       });
       return;
     }
-    setState(() => _routeView = value);
+    setState(() => _routeView = value == 2 ? 0 : value.clamp(0, 3));
   }
 
-  Future<void> _toggleRealPositioning() async {
+  Future<void> _toggleRealPositioning({bool resuming = false}) async {
     if (_positioningBusy) return;
     if (!_realPositioning &&
         !AppRuntimeConfig.instance.physicalPositioningEnabled) {
@@ -191,47 +228,100 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
       return;
     }
     setState(() => _positioningBusy = true);
+    final generation = ++_positioningGeneration;
     if (_realPositioning) {
-      await _physicalPositionSubscription?.cancel();
+      final subscription = _physicalPositionSubscription;
+      _physicalPositionSubscription = null;
+      _session?.pause();
+      await subscription?.cancel();
       await _pdr?.stop();
-      if (mounted) {
+      if (mounted && generation == _positioningGeneration) {
         setState(() {
           _realPositioning = false;
           _positioningBusy = false;
-          _positioningNotice =
-              'Posicionamento físico pausado; simulação preservada.';
+          _positioningNotice = 'Sensores pausados. Inicie a prévia animada para explorar a rota.';
         });
+        _session?.setExternalTracking(false);
       }
       return;
     }
     try {
       final session = _session;
       if (session == null) return;
-      _deviceSensors ??= AppSensorService.instance;
+      _deviceSensors ??= widget.sensors ?? AppSensorService.instance;
+      session.setExternalTracking(true);
+      if (!resuming) session.reset();
       _pdr ??= PdrPositioningService(
         campus: widget.campus,
         sensors: _deviceSensors!,
         initialPosition: session.position,
       );
-      _physicalPositionSubscription ??= _pdr!.positions.listen((position) {
-        _session?.applyExternalPosition(position);
+      if (!resuming) {
+        final origin = session.position;
+        _pdr!.reanchor(
+          PositionSample(
+            x: origin.x,
+            y: origin.y,
+            z: origin.z,
+            floor: origin.floor,
+            headingDegrees: origin.headingDegrees,
+            accuracyMeters: 8,
+            confidence: .45,
+            timestamp: DateTime.now(),
+          ),
+        );
+      }
+      _realPositioning = true;
+      session.start();
+      _physicalPositionSubscription = _pdr!.positions.listen((position) {
+        if (mounted &&
+            generation == _positioningGeneration &&
+            _realPositioning &&
+            (_session?.isPlaying ?? false)) {
+          _session?.applyExternalPosition(position);
+        }
       });
-      await _pdr!.start().timeout(const Duration(seconds: 2));
-      if (mounted) {
+      await _pdr!.start();
+      if (mounted && generation == _positioningGeneration) {
         setState(() {
           _realPositioning = true;
-          _positioningNotice = 'Sensores físicos ativos durante o uso: passos, bússola e map matching. Reancore por QR para limitar deriva.';
+          _positioningNotice =
+              'Estimativa de passos a partir de ${widget.origin.name}, piso ${widget.origin.floor}. Confirme essa origem. GPS não identifica sala ou piso; escala e orientação precisam de calibração. Reancore por QR.';
         });
       }
       unawaited(_loadMagneticReferences());
     } catch (error) {
-      if (mounted) {
+      if (!mounted || generation != _positioningGeneration) return;
+      final subscription = _physicalPositionSubscription;
+      _physicalPositionSubscription = null;
+      await subscription?.cancel();
+      await _pdr?.stop();
+      if (mounted && generation == _positioningGeneration) {
+        _realPositioning = false;
+        _session?.pause();
+        _session?.setExternalTracking(false);
         setState(() {
           _positioningNotice = 'Sensores físicos indisponíveis neste ambiente; a demo continua simulada.';
         });
       }
     } finally {
-      if (mounted) setState(() => _positioningBusy = false);
+      if (mounted && generation == _positioningGeneration) {
+        setState(() => _positioningBusy = false);
+      }
+    }
+  }
+
+  Future<void> _togglePlayback() async {
+    if (_positioningBusy) return;
+    if (!_realPositioning) {
+      _session?.setExternalTracking(false);
+      _session?.toggle();
+    } else if (_session?.isPlaying ?? false) {
+      _session?.pause();
+      await _pdr?.stop();
+    } else {
+      _session?.start();
+      await _pdr?.start();
     }
   }
 
@@ -395,8 +485,8 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                               ),
                               GranMapStatusPill(
                                 label: _realPositioning
-                                    ? 'PDR físico + map matching'
-                                    : 'Posição X/Y/Z simulada',
+                                    ? 'Passos • posição aproximada'
+                                    : 'Prévia animada',
                                 icon: Icons.sensors_rounded,
                                 color: _realPositioning
                                     ? GranMapColors.mint
@@ -419,6 +509,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                             runSpacing: 8,
                             children: [
                               OutlinedButton.icon(
+                                key: const ValueKey('advanced-sensor-toggle'),
                                 onPressed: _positioningBusy
                                     ? null
                                     : _toggleRealPositioning,
@@ -431,7 +522,7 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                   _positioningBusy
                                       ? 'Conectando…'
                                       : (_realPositioning
-                                            ? 'Pausar sensores'
+                                            ? 'Desligar sensores'
                                             : 'Usar sensores reais'),
                                 ),
                               ),
@@ -531,14 +622,6 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                               label: Text('3D'),
                                             ),
                                             ButtonSegment(
-                                              value: 2,
-                                              icon: Icon(
-                                                Icons.directions_walk_rounded,
-                                                size: 17,
-                                              ),
-                                              label: Text('Walk'),
-                                            ),
-                                            ButtonSegment(
                                               value: 3,
                                               icon: Icon(
                                                 Icons.view_in_ar_rounded,
@@ -569,13 +652,6 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                         focusFloor: session.currentFloor,
                                         route: route.nodes,
                                         userPosition: session.position,
-                                      ),
-                                      2 => WalkViewCanvas(
-                                        campus: widget.campus,
-                                        route: route.nodes,
-                                        position: session.position,
-                                        segmentIndex: session.segmentIndex,
-                                        destination: widget.destination,
                                       ),
                                       3 => CampusLensCanvas(
                                         campus: widget.campus,
@@ -635,7 +711,9 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                         children: [
                                           Expanded(
                                             child: FilledButton.icon(
-                                              onPressed: session.toggle,
+                                              onPressed: _positioningBusy
+                                                  ? null
+                                                  : _togglePlayback,
                                               icon: Icon(
                                                 session.isPlaying
                                                     ? Icons.pause_rounded
@@ -645,14 +723,18 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                               ),
                                               label: Text(
                                                 session.isPlaying
-                                                    ? 'Pausar navegação'
+                                                    ? (_realPositioning
+                                                          ? 'Pausar sensores'
+                                                          : 'Pausar prévia')
                                                     : session.hasArrived
                                                     ? 'Repetir percurso'
                                                     : session.status ==
                                                           NavigationSessionStatus
                                                               .paused
-                                                    ? 'Continuar navegação'
-                                                    : 'Iniciar navegação',
+                                                    ? (_realPositioning
+                                                          ? 'Retomar sensores'
+                                                          : 'Continuar prévia')
+                                                    : 'Iniciar prévia animada',
                                               ),
                                             ),
                                           ),
@@ -660,7 +742,9 @@ class _AdvancedRouteScreenState extends State<AdvancedRouteScreen> {
                                           IconButton.outlined(
                                             tooltip:
                                                 'Velocidade ${_speedLabel(session.playbackSpeed)}',
-                                            onPressed: _cycleSpeed,
+                                            onPressed: _realPositioning
+                                                ? null
+                                                : _cycleSpeed,
                                             icon: Text(
                                               _speedLabel(
                                                 session.playbackSpeed,

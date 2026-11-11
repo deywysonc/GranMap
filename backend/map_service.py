@@ -10,9 +10,10 @@ from db import connect
 
 ROOT = Path(__file__).resolve().parents[1]
 STRUCTURAL_MAP_PATH = (
-    ROOT / "app" / "assets" / "maps" / "gran_tiete_upper_floorplan_v11.json"
+    ROOT / "app" / "assets" / "maps" / "gran_tiete_floorplan_v12.json"
 )
-STRUCTURAL_MAP_VERSION = "upper-floorplan-v11"
+STRUCTURAL_MAP_VERSION = "floorplan-v12"
+LEGACY_V11_CHECKSUM = "c950c72596f5b62989a248ed11d9b0734f1ef68fb7ae5b0c3462731e293f5c88"
 
 
 @dataclass(frozen=True)
@@ -129,7 +130,7 @@ def ensure_initial_map() -> None:
     with connect() as con:
         published = con.execute(
             """
-            SELECT version FROM map_versions
+            SELECT version, checksum FROM map_versions
             WHERE status = 'published'
             ORDER BY published_at DESC, id DESC
             LIMIT 1
@@ -140,10 +141,29 @@ def ensure_initial_map() -> None:
             "structural-v7",
             "topological-v8",
         }
+        if published is not None and published["version"] == "upper-floorplan-v11":
+            should_publish = published["checksum"] == LEGACY_V11_CHECKSUM
         if should_publish:
             con.execute(
                 "UPDATE map_versions SET status = 'archived' WHERE status = 'published'"
             )
+            if published is not None and published["version"] == "upper-floorplan-v11":
+                # A closed old segment must remain closed after it is split into
+                # a corner or moved onto the circulation outside the court.
+                replacements = {
+                    "ground_c1_end__ground_spiral_ramp_landing": "ground_c1_end__ground_ramp_access_corner",
+                    "upper_spine_5__upper_spine_6": "upper_gallery_turn__upper_gallery_step",
+                    "upper_service_spine__upper_bwc_masc": "upper_bwc_passage__upper_bwc_masc",
+                    "ground_court_east_north__ground_services_north": "ground_court_east_north__ground_services_north_approach",
+                    "ground_services_north__ground_services_mid": "ground_services_north_approach__ground_services_mid_approach",
+                    "ground_services_mid__ground_services_south": "ground_services_mid_approach__ground_services_south_approach",
+                    "ground_services_south__ground_court_east_south": "ground_services_south_approach__ground_court_east_south",
+                }
+                for old, new in replacements.items():
+                    con.execute(
+                        "UPDATE route_closures SET edge_id = ? WHERE edge_id = ? AND status = 'active'",
+                        (new, old),
+                    )
         con.execute(
             """
             INSERT INTO map_versions(
@@ -153,11 +173,11 @@ def ensure_initial_map() -> None:
             """,
             (
                 STRUCTURAL_MAP_VERSION,
-                "Piso superior baseado na planta arquitetônica",
+                "GranMap: planta superior e térreo esquemático",
                 "published" if should_publish else "draft",
                 canonical_json(data),
                 checksum,
-                "Planta superior oficial em escala relativa, com a rampa acrescentada no canto inferior esquerdo conforme orientação do autor; distâncias ainda provisórias.",
+                "Planta superior em escala relativa, com circulação ampla abaixo da galeria e Agronomia à esquerda da rampa conforme as correções do autor. No térreo, lanchonete e rampa de frente à quadra. Dimensões e acessibilidade não aferidas.",
                 utc_now_iso() if should_publish else None,
             ),
         )

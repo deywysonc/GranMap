@@ -11,7 +11,7 @@
 
 1. **Início:** apresente a próxima aula, atalhos, recentes e funcionamento offline.
 2. **Busca:** procure `Laboratório de Química`, favorite e abra a rota.
-3. **Navegação:** alterne entre 2D, 3D e Walk; inicie a simulação e mostre a confiança.
+3. **Navegação:** selecione uma sala no mapa e use “Ir para cá”; alterne entre 2D e 3D, inicie a prévia e mostre a confiança. AR permanece disponível como opção de câmera.
 4. **Acessibilidade:** abra as ferramentas e ative a rota acessível.
 5. **Posicionamento:** mostre QR, sensores, PDR, GPS de apoio e diagnóstico no modo avançado.
 6. **Comunidade:** apresente uma alteração, votos, confiança e prioridade do dado oficial.

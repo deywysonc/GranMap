@@ -10,7 +10,7 @@ COPY backend/requirements.txt backend/requirements-production.txt ./
 RUN pip install --upgrade pip && pip install -r requirements-production.txt
 
 COPY backend/ ./
-COPY app/assets/maps/gran_tiete_upper_floorplan_v11.json /opt/granmap/app/assets/maps/gran_tiete_upper_floorplan_v11.json
+COPY app/assets/maps/gran_tiete_floorplan_v12.json /opt/granmap/app/assets/maps/gran_tiete_floorplan_v12.json
 
 RUN addgroup --system granmap && adduser --system --ingroup granmap granmap \
     && chown -R granmap:granmap /opt/granmap

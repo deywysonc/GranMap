@@ -7,6 +7,8 @@ import 'package:granmap/screens/map_screen.dart';
 import 'package:granmap/screens/route_screen.dart';
 import 'package:granmap/screens/search_screen.dart';
 import 'package:granmap/theme/granmap_theme.dart';
+import 'package:granmap/widgets/campus_map_canvas.dart';
+import 'package:granmap/widgets/campus_twin_canvas.dart';
 import 'package:granmap/widgets/granmap_ui.dart';
 import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
@@ -46,34 +48,95 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('mapa 3D ocupa a área e modos Walk e AR respondem ao toque', (
+  testWidgets(
+    'mapa permite trocar piso, explorar 3D e pedir rota AR sem Walk',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      var requestedView = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: GranMapTheme.dark,
+          home: Scaffold(
+            body: MapScreen(
+              campus: _campus(),
+              onRouteModeRequested: (view) => requestedView = view,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('3D'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CampusTwinCanvas), findsOneWidget);
+      expect(
+        tester
+            .getRect(find.byKey(const ValueKey('map-explore-viewport')))
+            .height,
+        greaterThan(300),
+      );
+      expect(tester.takeException(), isNull);
+      expect(find.text('Walk'), findsNothing);
+      await tester.tap(find.text('Superior'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<CampusTwinCanvas>(find.byType(CampusTwinCanvas))
+            .focusFloor,
+        1,
+      );
+      await tester.tap(find.byTooltip('Navegar com câmera'));
+      await tester.pump();
+      expect(requestedView, 3);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('local selecionado abre detalhes e pede rota sem cobrir o mapa', (
     tester,
   ) async {
-    var requestedView = 0;
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    CampusPoi? requestedPoi;
     await tester.pumpWidget(
       MaterialApp(
         theme: GranMapTheme.dark,
         home: Scaffold(
           body: MapScreen(
             campus: _campus(),
-            onRouteModeRequested: (view) => requestedView = view,
+            onPoiRouteRequested: (poi) => requestedPoi = poi,
           ),
         ),
       ),
     );
-
-    await tester.tap(find.text('3D'));
+    final poi = _campus().pois.first;
+    tester.widget<CampusMapCanvas>(find.byType(CampusMapCanvas)).onPoiSelected!(
+      poi,
+    );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Arraste para girar'), findsOneWidget);
+    expect(find.text('Entrada Gran'), findsOneWidget);
+    expect(find.text('Ir para cá'), findsOneWidget);
+    final viewport = tester.getRect(
+      find.byKey(const ValueKey('map-explore-viewport')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('map-selected-place')),
+    );
+    expect(viewport.bottom, lessThanOrEqualTo(details.top));
+    expect(viewport.height, greaterThan(250));
+    await tester.tap(find.text('Ir para cá'));
+    expect(requestedPoi?.id, poi.id);
+    await tester.tap(find.text('Superior'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('map-selected-place')), findsNothing);
+    expect(
+      tester.widget<CampusMapCanvas>(find.byType(CampusMapCanvas)).floor,
+      1,
+    );
+    await tester.tap(find.byTooltip('Guia e legenda do mapa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Explore a Gran Tietê'), findsOneWidget);
     expect(tester.takeException(), isNull);
-
-    await tester.tap(find.text('Walk'));
-    await tester.pump();
-    expect(requestedView, 2);
-
-    await tester.tap(find.text('AR'));
-    await tester.pump();
-    expect(requestedView, 3);
   });
 
   testWidgets('card de destino abre a rota sem esperar o histórico', (
@@ -102,6 +165,34 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  testWidgets('mapa e legenda continuam acessíveis com fonte ampliada', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: GranMapTheme.dark,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(1.4)),
+          child: child!,
+        ),
+        home: Scaffold(body: MapScreen(campus: _campus())),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getRect(find.byKey(const ValueKey('map-explore-viewport'))).height,
+      greaterThan(250),
+    );
+    await tester.tap(find.byTooltip('Guia e legenda do mapa'));
+    await tester.pumpAndSettle();
+    expect(find.text('Explore a Gran Tietê'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('visitante não vê carregamento acadêmico infinito', (

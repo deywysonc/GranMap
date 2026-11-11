@@ -157,15 +157,33 @@ class GranGeofence {
 
 /// Mantém a presença geográfica atualizada somente enquanto o app está em uso.
 class GranPresenceService extends ChangeNotifier {
-  GranPresenceService._();
+  GranPresenceService._()
+    : setupTimeout = const Duration(seconds: 5),
+      permissionTimeout = const Duration(seconds: 20),
+      lastKnownTimeout = const Duration(seconds: 2),
+      freshFixTimeout = const Duration(seconds: 10);
+
+  @visibleForTesting
+  GranPresenceService.forTesting({
+    this.setupTimeout = const Duration(seconds: 5),
+    this.permissionTimeout = const Duration(seconds: 20),
+    this.lastKnownTimeout = const Duration(seconds: 2),
+    this.freshFixTimeout = const Duration(seconds: 10),
+  });
 
   static final GranPresenceService instance = GranPresenceService._();
+
+  final Duration setupTimeout;
+  final Duration permissionTimeout;
+  final Duration lastKnownTimeout;
+  final Duration freshFixTimeout;
 
   StreamSubscription<Position>? _positionSubscription;
   GranPresenceSnapshot _snapshot = GranPresenceSnapshot.checking;
   bool _running = false;
   bool _foreground = true;
-  bool _starting = false;
+  int _generation = 0;
+  int? _startingGeneration;
 
   GranPresenceSnapshot get snapshot => _snapshot;
   bool get running => _running;
@@ -177,16 +195,20 @@ class GranPresenceService extends ChangeNotifier {
 
   Future<void> stop() async {
     _running = false;
-    await _positionSubscription?.cancel();
+    _generation++;
+    final subscription = _positionSubscription;
     _positionSubscription = null;
+    await subscription?.cancel();
   }
 
   Future<void> setForeground(bool value) async {
     if (_foreground == value) return;
     _foreground = value;
     if (!value) {
-      await _positionSubscription?.cancel();
+      _generation++;
+      final subscription = _positionSubscription;
       _positionSubscription = null;
+      await subscription?.cancel();
     } else if (_running) {
       await _beginListening(requestPermission: false);
     }
@@ -209,11 +231,23 @@ class GranPresenceService extends ChangeNotifier {
     required bool requestPermission,
     bool force = false,
   }) async {
-    if (_starting || !_running || !_foreground) return;
+    if (_startingGeneration == _generation || !_running || !_foreground) return;
     if (_positionSubscription != null && !force) return;
-    _starting = true;
+    final generation = ++_generation;
+    _startingGeneration = generation;
+    var waitingForPermission = false;
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
+      // A native plugin may leave its future pending indefinitely. These
+      // deadlines protect the UI independently of the plugin's own limits.
+      final previous = _positionSubscription;
+      _positionSubscription = null;
+      await previous?.cancel().timeout(setupTimeout);
+      if (!_isCurrent(generation)) return;
+      final enabled = await Geolocator.isLocationServiceEnabled().timeout(
+        setupTimeout,
+      );
+      if (!_isCurrent(generation)) return;
+      if (!enabled) {
         _set(
           const GranPresenceSnapshot(
             status: GranPresenceStatus.servicesDisabled,
@@ -223,9 +257,15 @@ class GranPresenceService extends ChangeNotifier {
         return;
       }
 
-      var permission = await Geolocator.checkPermission();
+      var permission = await Geolocator.checkPermission().timeout(setupTimeout);
+      if (!_isCurrent(generation)) return;
       if (permission == LocationPermission.denied && requestPermission) {
-        permission = await Geolocator.requestPermission();
+        waitingForPermission = true;
+        permission = await Geolocator.requestPermission().timeout(
+          permissionTimeout,
+        );
+        waitingForPermission = false;
+        if (!_isCurrent(generation)) return;
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
@@ -240,20 +280,21 @@ class GranPresenceService extends ChangeNotifier {
         return;
       }
 
-      if (_snapshot.status != GranPresenceStatus.inside &&
-          _snapshot.status != GranPresenceStatus.nearby &&
-          _snapshot.status != GranPresenceStatus.outside) {
+      if (_snapshot.updatedAt == null) {
         _set(GranPresenceSnapshot.checking);
       }
 
       try {
-        final last = await Geolocator.getLastKnownPosition();
-        if (last != null) _accept(last);
+        final last = await Geolocator.getLastKnownPosition().timeout(
+          lastKnownTimeout,
+        );
+        if (!_isCurrent(generation)) return;
+        if (last != null) _accept(last, generation);
       } catch (_) {
         // Alguns dispositivos não fornecem uma posição anterior.
       }
 
-      await _positionSubscription?.cancel();
+      if (!_isCurrent(generation)) return;
       _positionSubscription =
           Geolocator.getPositionStream(
             locationSettings: const LocationSettings(
@@ -261,53 +302,95 @@ class GranPresenceService extends ChangeNotifier {
               distanceFilter: 8,
             ),
           ).listen(
-            _accept,
+            (position) => _accept(position, generation),
             onError: (Object error) {
-              _set(
-                GranPresenceSnapshot(
-                  status: GranPresenceStatus.unavailable,
-                  detail: 'Não foi possível atualizar o GPS: $error',
-                ),
+              if (!_isCurrent(generation)) return;
+              _reportFailure(
+                GranPresenceStatus.unavailable,
+                'Não foi possível atualizar sua localização. '
+                'Você pode usar o mapa e tentar novamente.',
               );
             },
           );
-      unawaited(_requestFreshFix());
-    } catch (error) {
-      _set(
-        GranPresenceSnapshot(
-          status: GranPresenceStatus.unavailable,
-          detail: 'Localização indisponível neste aparelho: $error',
-        ),
+      unawaited(_requestFreshFix(generation));
+    } on TimeoutException {
+      if (!_isCurrent(generation)) return;
+      _reportFailure(
+        waitingForPermission
+            ? GranPresenceStatus.uncertain
+            : GranPresenceStatus.unavailable,
+        waitingForPermission
+            ? 'A permissão de localização ainda não foi confirmada. '
+                  'Você pode usar o mapa e tentar novamente.'
+            : 'A localização demorou para responder. '
+                  'Você pode usar o mapa e tentar novamente.',
+      );
+    } catch (_) {
+      if (!_isCurrent(generation)) return;
+      _reportFailure(
+        GranPresenceStatus.unavailable,
+        'Não foi possível acessar sua localização. '
+        'Você pode usar o mapa e tentar novamente.',
       );
     } finally {
-      _starting = false;
+      if (_startingGeneration == generation) _startingGeneration = null;
     }
   }
 
-  Future<void> _requestFreshFix() async {
+  bool _isCurrent(int generation) =>
+      _running && _foreground && _generation == generation;
+
+  Future<void> _requestFreshFix(int generation) async {
+    final previousTimestamp = _snapshot.updatedAt;
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
+        locationSettings: LocationSettings(
           accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 10),
+          timeLimit: freshFixTimeout,
         ),
-      );
-      _accept(position);
+      ).timeout(freshFixTimeout);
+      _accept(position, generation);
     } on TimeoutException {
-      if (_snapshot.status == GranPresenceStatus.checking) {
-        _set(
-          const GranPresenceSnapshot(
-            status: GranPresenceStatus.uncertain,
-            detail: 'O GPS ainda não conseguiu uma leitura confiável.',
-          ),
+      if (_isCurrent(generation) && _snapshot.updatedAt == previousTimestamp) {
+        _reportFailure(
+          GranPresenceStatus.uncertain,
+          'O GPS ainda não conseguiu uma leitura confiável. '
+          'Você pode usar o mapa e tentar novamente.',
         );
       }
     } catch (_) {
-      // O stream pode entregar a posição mesmo quando a leitura pontual falha.
+      if (_isCurrent(generation) && _snapshot.updatedAt == previousTimestamp) {
+        _reportFailure(
+          GranPresenceStatus.unavailable,
+          'Não foi possível obter sua localização agora. '
+          'Você pode usar o mapa e tentar novamente.',
+        );
+      }
     }
   }
 
-  void _accept(Position position) {
+  void _reportFailure(GranPresenceStatus status, String detail) {
+    final last = _snapshot;
+    _set(
+      GranPresenceSnapshot(
+        status: last.updatedAt == null ? status : GranPresenceStatus.uncertain,
+        distanceMeters: last.distanceMeters,
+        accuracyMeters: last.accuracyMeters,
+        latitude: last.latitude,
+        longitude: last.longitude,
+        updatedAt: last.updatedAt,
+        detail: detail,
+      ),
+    );
+  }
+
+  void _accept(Position position, int generation) {
+    if (!_isCurrent(generation)) return;
+    final previousTimestamp = _snapshot.updatedAt;
+    if (previousTimestamp != null &&
+        position.timestamp.isBefore(previousTimestamp)) {
+      return;
+    }
     _set(
       GranGeofence.classify(
         latitude: position.latitude,
@@ -321,5 +404,14 @@ class GranPresenceService extends ChangeNotifier {
   void _set(GranPresenceSnapshot value) {
     _snapshot = value;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _running = false;
+    _generation++;
+    unawaited(_positionSubscription?.cancel());
+    _positionSubscription = null;
+    super.dispose();
   }
 }

@@ -5,46 +5,105 @@ import 'package:flutter/material.dart';
 import '../community/community_models.dart';
 import '../services/app_session.dart';
 import '../services/community_service.dart';
+import '../services/community_sync_coordinator.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 import 'login_screen.dart';
 
 class CommunityScreen extends StatefulWidget {
-  const CommunityScreen({super.key});
+  final AppSession? session;
+  final CommunityService? service;
+  final CommunitySyncCoordinator? syncCoordinator;
+  final Duration operationTimeout;
+
+  const CommunityScreen({
+    super.key,
+    this.session,
+    this.service,
+    this.syncCoordinator,
+    this.operationTimeout = const Duration(seconds: 12),
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
 }
 
 class _CommunityScreenState extends State<CommunityScreen> {
-  final AppSession _session = AppSession.instance;
+  late final AppSession _session;
   late final CommunityService _service;
+  late final CommunitySyncCoordinator _sync;
 
   CommunitySnapshot? _snapshot;
   bool _loading = true;
   String? _loadError;
   String? _busyProposalId;
+  bool _creating = false;
+  bool _retrying = false;
+  bool _syncDirty = false;
+  bool _authenticating = false;
+  int _generation = 0;
+  int _loadSequence = 0;
+  String? _account;
+  bool get _busy =>
+      _authenticating || _creating || _retrying || _busyProposalId != null;
+  String get _accountKey => '${_session.storageScope}:${_session.token}';
+  bool _current(int generation) => mounted && generation == _generation;
 
   @override
   void initState() {
     super.initState();
-    _service = CommunityService(session: _session);
+    _session = widget.session ?? AppSession.instance;
+    _service = widget.service ?? CommunityService(session: _session);
+    _sync = widget.syncCoordinator ?? CommunitySyncCoordinator.instance;
+    _account = _accountKey;
     _session.addListener(_sessionChanged);
+    _sync.addListener(_syncChanged);
     _reload();
   }
 
   @override
   void dispose() {
     _session.removeListener(_sessionChanged);
-    _service.dispose();
+    _sync.removeListener(_syncChanged);
+    if (widget.service == null) _service.dispose();
     super.dispose();
   }
 
   void _sessionChanged() {
-    if (mounted) _reload(showProgress: false);
+    if (!mounted || _account == _accountKey) return;
+    _account = _accountKey;
+    _generation++;
+    setState(() {
+      _snapshot = null;
+      _busyProposalId = null;
+      _creating = false;
+      _retrying = false;
+      _syncDirty = false;
+      _loadError = null;
+    });
+    unawaited(_reload());
+  }
+
+  void _syncChanged() {
+    if (!mounted || _sync.snapshotScope != _session.storageScope) return;
+    if (_busy) {
+      _syncDirty = true;
+    } else {
+      unawaited(_reload(showProgress: false));
+    }
+  }
+
+  void _flushSyncNotice() {
+    if (!_busy && _syncDirty && mounted) {
+      _syncDirty = false;
+      unawaited(_reload(showProgress: false));
+    }
   }
 
   Future<void> _reload({bool showProgress = true}) async {
+    final generation = _generation;
+    final sequence = ++_loadSequence;
+    bool current() => _current(generation) && sequence == _loadSequence;
     if (showProgress && mounted) {
       setState(() {
         _loading = true;
@@ -52,23 +111,21 @@ class _CommunityScreenState extends State<CommunityScreen> {
       });
     }
     try {
-      final snapshot = await _service.load().timeout(
-        const Duration(seconds: 8),
-      );
-      if (!mounted) return;
+      final snapshot = await _service.load().timeout(widget.operationTimeout);
+      if (!current()) return;
       setState(() {
         _snapshot = snapshot;
         _loading = false;
         _loadError = null;
       });
     } on TimeoutException {
-      if (!mounted) return;
+      if (!current()) return;
       setState(() {
         _loading = false;
         _loadError = 'A sincronização demorou mais que o esperado.';
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!current()) return;
       setState(() {
         _loading = false;
         _loadError = 'Não foi possível consultar as atualizações agora.';
@@ -77,62 +134,138 @@ class _CommunityScreenState extends State<CommunityScreen> {
   }
 
   Future<void> _openCreateProposal() async {
-    if (!_session.isLoggedIn) {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      if (!_session.isLoggedIn || !mounted) return;
-    }
+    if (_busy) return;
+    if (!await _ensureAuthenticated() || !mounted || _busy) return;
 
-    final proposal = await showDialog<_ProposalDraft>(
-      context: context,
-      builder: (_) => const _ProposalDialog(),
-    );
-    if (proposal == null || !mounted) return;
-
+    final generation = _generation;
+    setState(() => _creating = true);
     try {
-      final before = _snapshot?.pendingOperations ?? 0;
-      await _service.createProposal(
-        subject: proposal.subject,
-        fromRoom: proposal.fromRoom,
-        toRoom: proposal.toRoom,
-        reason: proposal.reason,
+      final proposal = await showDialog<_ProposalDraft>(
+        context: context,
+        builder: (_) => const _ProposalDialog(),
       );
+      if (proposal == null || !_current(generation)) return;
+      await _service
+          .createProposal(
+            subject: proposal.subject,
+            fromRoom: proposal.fromRoom,
+            toRoom: proposal.toRoom,
+            reason: proposal.reason,
+          )
+          .timeout(widget.operationTimeout);
+      if (!_current(generation)) return;
       await _reload(showProgress: false);
-      if (!mounted) return;
-      final queued = (_snapshot?.pendingOperations ?? 0) > before;
+      if (!_current(generation)) return;
+      final queued =
+          (_snapshot?.pendingOperations ?? 0) > 0 ||
+          (_snapshot?.isOffline ?? true) ||
+          _loadError != null;
       _message(
         queued
-            ? 'Sem conexão: contribuição salva e pronta para sincronizar.'
+            ? 'Contribuição salva. Atualize para conferir os envios pendentes.'
             : 'Contribuição enviada para verificação.',
       );
+    } on TimeoutException {
+      if (_current(generation)) {
+        _message(
+          'O envio ainda não foi confirmado. Atualize antes de reenviar.',
+          error: true,
+        );
+      }
     } catch (error) {
-      if (mounted) _message(error.toString(), error: true);
+      if (_current(generation)) _message(error.toString(), error: true);
+    } finally {
+      if (_current(generation)) {
+        setState(() => _creating = false);
+        _flushSyncNotice();
+      }
     }
   }
 
   Future<void> _vote(RoomChangeContribution contribution, bool agrees) async {
-    if (!_session.isLoggedIn) {
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const LoginScreen()));
-      if (!_session.isLoggedIn || !mounted) return;
-    }
+    if (_busy) return;
+    if (!await _ensureAuthenticated() || !mounted) return;
 
+    if (_busy) return;
+    final generation = _generation;
     setState(() => _busyProposalId = contribution.id);
     try {
-      final before = _snapshot?.pendingOperations ?? 0;
-      await _service.vote(contribution: contribution, agrees: agrees);
+      await _service
+          .vote(contribution: contribution, agrees: agrees)
+          .timeout(widget.operationTimeout);
+      if (!_current(generation)) return;
       await _reload(showProgress: false);
-      if (!mounted) return;
-      final queued = (_snapshot?.pendingOperations ?? 0) > before;
+      if (!_current(generation)) return;
+      final queued =
+          (_snapshot?.pendingOperations ?? 0) > 0 ||
+          (_snapshot?.isOffline ?? true) ||
+          _loadError != null;
       _message(
         queued
-            ? 'Voto salvo no aparelho; será sincronizado automaticamente.'
+            ? 'Voto salvo. Há envios aguardando sincronização com o app aberto.'
             : 'Seu voto foi registrado.',
       );
+    } on TimeoutException {
+      if (_current(generation)) {
+        _message(
+          'Não foi possível confirmar o voto agora. Atualize para conferir.',
+          error: true,
+        );
+      }
     } catch (error) {
-      if (mounted) _message(error.toString(), error: true);
+      if (_current(generation)) _message(error.toString(), error: true);
     } finally {
-      if (mounted) setState(() => _busyProposalId = null);
+      if (_current(generation)) {
+        setState(() => _busyProposalId = null);
+        _flushSyncNotice();
+      }
+    }
+  }
+
+  Future<void> _retryFailed() async {
+    if (_busy) return;
+    final generation = _generation;
+    setState(() => _retrying = true);
+    try {
+      final snapshot = await _service.retryFailed().timeout(
+        widget.operationTimeout,
+      );
+      if (!_current(generation)) return;
+      setState(() => _snapshot = snapshot);
+      _message(
+        snapshot.failedOperations > 0
+            ? 'Alguns envios ainda precisam de atenção. Confira as informações.'
+            : 'Envios revisados; a sincronização continuará com o app aberto.',
+      );
+    } catch (_) {
+      if (_current(generation)) {
+        _message(
+          'Não foi possível reenviar agora. Tente novamente.',
+          error: true,
+        );
+      }
+    } finally {
+      if (_current(generation)) {
+        setState(() => _retrying = false);
+        _flushSyncNotice();
+      }
+    }
+  }
+
+  Future<bool> _ensureAuthenticated() async {
+    if (_session.isLoggedIn) return true;
+    if (_authenticating || !mounted) return false;
+    setState(() => _authenticating = true);
+    try {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => LoginScreen(session: _session)));
+      return mounted && _session.isLoggedIn;
+    } finally {
+      if (mounted) {
+        setState(() => _authenticating = false);
+        _flushSyncNotice();
+      }
     }
   }
 
@@ -147,6 +280,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final generation = _generation;
+    bool currentFrame() => _current(generation);
     final snapshot = _snapshot;
     final contributions =
         snapshot?.contributions ?? const <RoomChangeContribution>[];
@@ -165,11 +300,17 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 children: [
                   GranMapFadeSlide(
                     child: GranMapPageHeader(
-                      eyebrow: '',
+                      eyebrow: 'MURAL DO CAMPUS',
                       title: 'Comunidade',
-                      subtitle: 'Atualizações em tempo real',
+                      subtitle: 'Avisos de mudança de sala entre alunos',
                       trailing: FilledButton.icon(
-                        onPressed: _openCreateProposal,
+                        onPressed: _busy
+                            ? null
+                            : () {
+                                if (currentFrame()) {
+                                  unawaited(_openCreateProposal());
+                                }
+                              },
                         icon: const Icon(Icons.add_rounded),
                         label: const Text('Informar'),
                       ),
@@ -180,6 +321,27 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     delay: const Duration(milliseconds: 60),
                     child: _TrustCard(session: _session, snapshot: snapshot),
                   ),
+                  if ((snapshot?.lastError ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      snapshot!.lastError!,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  if ((snapshot?.failedOperations ?? 0) > 0)
+                    TextButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () {
+                              if (currentFrame()) unawaited(_retryFailed());
+                            },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: Text(
+                        _retrying
+                            ? 'Reenviando…'
+                            : 'Tentar reenviar pendências',
+                      ),
+                    ),
                   if (_loading) ...[
                     const SizedBox(height: 18),
                     const GranMapSurface(
@@ -233,8 +395,12 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       child: _ContributionCard(
                         contribution: contributions[index],
                         loggedIn: _session.isLoggedIn,
-                        busy: _busyProposalId == contributions[index].id,
-                        onVote: (agrees) => _vote(contributions[index], agrees),
+                        busy: _busy,
+                        onVote: (agrees) {
+                          if (currentFrame()) {
+                            unawaited(_vote(contributions[index], agrees));
+                          }
+                        },
                       ),
                     ),
                   ],
@@ -274,7 +440,7 @@ class _TrustCard extends StatelessWidget {
           Row(
             children: [
               const GranMapIconBadge(
-                icon: Icons.hub_rounded,
+                icon: Icons.campaign_rounded,
                 color: GranMapColors.violet,
               ),
               const SizedBox(width: 12),
@@ -283,11 +449,11 @@ class _TrustCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Rede de confiança',
+                      'Avisos da turma',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      'A informação oficial sempre tem prioridade.',
+                      'A informação oficial da faculdade sempre tem prioridade.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -302,7 +468,11 @@ class _TrustCard extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               GranMapStatusPill(
-                label: offline ? 'Modo offline' : 'Sincronizado',
+                label: offline
+                    ? 'Modo offline'
+                    : pending > 0 || failed > 0
+                    ? 'Envios pendentes'
+                    : 'Sincronizado',
                 icon: offline
                     ? Icons.cloud_off_rounded
                     : Icons.cloud_done_rounded,
@@ -543,7 +713,7 @@ class _ContributionCard extends StatelessWidget {
                     if (!loggedIn)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 10),
-                        child: Text('O voto solicitará seu login.'),
+                        child: Text('Entre na conta para votar.'),
                       ),
                   ],
                 ),
@@ -723,10 +893,26 @@ class _ProposalDialogState extends State<_ProposalDialog> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                _field(_subject, 'Disciplina ou atividade'),
-                _field(_fromRoom, 'Sala informada anteriormente'),
-                _field(_toRoom, 'Nova sala'),
-                _field(_reason, 'Como você soube?', maxLines: 3, minimum: 5),
+                _field(
+                  _subject,
+                  'Disciplina ou atividade',
+                  minimum: 3,
+                  maximum: 180,
+                ),
+                _field(
+                  _fromRoom,
+                  'Sala original',
+                  minimum: 1,
+                  maximum: 180,
+                ),
+                _field(_toRoom, 'Nova sala', minimum: 1, maximum: 180),
+                _field(
+                  _reason,
+                  'Como você soube?',
+                  maxLines: 3,
+                  minimum: 5,
+                  maximum: 600,
+                ),
               ],
             ),
           ),
@@ -751,16 +937,20 @@ class _ProposalDialogState extends State<_ProposalDialog> {
     String label, {
     int maxLines = 1,
     int minimum = 2,
+    int maximum = 180,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: controller,
         maxLines: maxLines,
+        maxLength: maximum,
         textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(labelText: label),
-        validator: (value) => (value ?? '').trim().length < minimum
-            ? 'Preencha este campo.'
+        validator: (value) =>
+            (value ?? '').trim().length < minimum ||
+                (value ?? '').trim().length > maximum
+            ? 'Use entre $minimum e $maximum caracteres.'
             : null,
       ),
     );

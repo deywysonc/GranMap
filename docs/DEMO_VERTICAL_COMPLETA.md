@@ -1,6 +1,6 @@
 # GranMap — demo vertical completa
 
-**Status: concluída em 20/08/2026.**
+**Registro histórico da demo de 20/08/2026, atualizado para a interface v12.**
 
 ## Objetivo
 
@@ -12,7 +12,7 @@ motores, contratos e fluxos devem ser reais e reaproveitáveis.
 
 - nomes e catálogo institucional podem ser reais;
 - geometria, escala, tempo e sinais simulados devem aparecer como demonstração;
-- 2D, 3D, primeira pessoa e AR consomem o mesmo sistema X/Y/Z;
+- 2D, 3D e AR consomem o mesmo grafo e sistema X/Y/Z;
 - nenhuma tela afirma precisão maior do que a confiança calculada;
 - dados oficiais continuam com prioridade sobre contribuições comunitárias.
 
@@ -22,7 +22,7 @@ motores, contratos e fluxos devem ser reais e reaproveitáveis.
   maquete, troca de piso, acessibilidade e recálculo;
 - **Twin View:** Digital Twin 3D conceitual, pisos explodidos ou transparentes,
   rota 3D e destino destacado;
-- **Walk View:** navegação em primeira pessoa dentro do mesmo Twin;
+- **Explorar a planta:** seleção de locais por toque, zoom e acesso direto à rota;
 - **Gran Lens:** AR demonstrativo sobre câmera compatível, com modo simulado
   e preparação para âncoras reais;
 - **Signal Halo:** representação visual da confiança e da incerteza;
@@ -31,7 +31,7 @@ motores, contratos e fluxos devem ser reais e reaproveitáveis.
 - **GranMap Admin:** operação acadêmica, conflitos, usuários, moderação e
   auditoria.
 
-Os modos 2D, Twin, Walk e AR preservam uma única `NavigationSession`: iniciar,
+Os modos 2D, Twin e AR preservam uma única `NavigationSession`: iniciar,
 pausar, acelerar ou trocar a visualização não reinicia a rota. A mesma posição
 X/Y/Z atualiza instrução, piso, progresso, destino e confiança.
 
@@ -53,7 +53,7 @@ confiança.
 ## Definição de concluído
 
 Uma única rota deve poder ser iniciada pela busca ou pela próxima aula e
-acompanhada sem perder estado no 2D, 3D, primeira pessoa e AR demonstrativo. A
+acompanhada sem perder estado no 2D, 3D e AR demonstrativo. A
 posição deve avançar continuamente, mudar de piso, atualizar progresso e
 instruções, respeitar acessibilidade e reagir a bloqueios. O fluxo acadêmico e
 comunitário precisa fechar no Admin, com conflitos e auditoria. Um cenário de
@@ -63,7 +63,7 @@ dados determinístico deve permitir repetir toda a apresentação.
 
 1. Execute `scripts/start_demo.ps1` na raiz do repositório.
 2. No app, pesquise um destino ou use a próxima aula e inicie a rota.
-3. Alterne entre **2D**, **Twin**, **Walk** e **AR** durante o percurso.
+3. Alterne entre **2D**, **3D** e **AR** durante o percurso. Street View/Walk não integra mais a demo.
 4. Abra o **GranMap Lab** para mudar ruído, velocidade e inspecionar confiança,
    sensores, Nodes e Edges.
 5. Entre como aluno para favoritos, histórico, grade e comunidade.

@@ -3,11 +3,13 @@ import tempfile
 import unittest
 
 from fastapi import HTTPException, Response
+from fastapi.testclient import TestClient
 
 import auth_router
 import db
 import map_router
-from map_service import edge_id, ensure_initial_map, validate_map
+import main
+from map_service import LEGACY_V11_CHECKSUM, edge_id, ensure_initial_map, validate_map
 
 
 class MapOperationsTest(unittest.TestCase):
@@ -77,6 +79,54 @@ class MapOperationsTest(unittest.TestCase):
         )
         self.assertTrue(resolved["resolved"])
         self.assertEqual(map_router.active_closures(), [])
+
+    def test_untouched_legacy_seed_is_upgraded_without_resetting_other_data(self):
+        with db.connect() as con:
+            con.execute(
+                "UPDATE map_versions SET version = ?, checksum = ? WHERE status = 'published'",
+                ("upper-floorplan-v11", LEGACY_V11_CHECKSUM),
+            )
+            before = con.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            user_id = con.execute("SELECT id FROM users LIMIT 1").fetchone()[0]
+            con.execute(
+                "INSERT INTO route_closures(edge_id, floor, reason, created_by_user_id) VALUES (?, 1, ?, ?)",
+                ("upper_spine_5__upper_spine_6", "Manutenção", user_id),
+            )
+            con.commit()
+        ensure_initial_map()
+        current = map_router.current_map(Response())
+        self.assertEqual(current["version"], "floorplan-v12")
+        self.assertEqual(map_router.active_closures()[0]["edge_id"], "upper_gallery_turn__upper_gallery_step")
+        with db.connect() as con:
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM users").fetchone()[0], before)
+
+    def test_modified_institutional_map_is_not_replaced_by_seed_upgrade(self):
+        with db.connect() as con:
+            con.execute(
+                "UPDATE map_versions SET version = ?, checksum = ? WHERE status = 'published'",
+                ("upper-floorplan-v11", "edited-by-coordination"),
+            )
+            con.commit()
+        ensure_initial_map()
+        current = map_router.current_map(Response())
+        self.assertEqual(current["version"], "upper-floorplan-v11")
+        with db.connect() as con:
+            self.assertEqual(con.execute(
+                "SELECT status FROM map_versions WHERE version = 'floorplan-v12'"
+            ).fetchone()["status"], "draft")
+
+    def test_browser_can_read_map_etag_across_origins(self):
+        client = TestClient(main.app)
+        response = client.get(
+            "/maps/current", headers={"Origin": "http://127.0.0.1:8088"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("etag", response.headers)
+        exposed = {
+            header.strip().lower()
+            for header in response.headers["access-control-expose-headers"].split(",")
+        }
+        self.assertTrue({"etag", "x-request-id", "retry-after"}.issubset(exposed))
 
     def test_unknown_edge_cannot_be_closed(self):
         with self.assertRaises(HTTPException) as raised:

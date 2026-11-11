@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,16 +8,21 @@ import '../models/campus_map.dart';
 import '../navigation/navigation_service.dart';
 import '../navigation/navigation_session.dart';
 import '../navigation/route_result.dart';
+import '../positioning/app_sensor_service.dart';
 import '../positioning/gran_presence_service.dart';
+import '../positioning/pdr_positioning_service.dart';
+import '../positioning/position_sample.dart';
+import '../positioning/sensor_service.dart';
 import '../services/app_preferences.dart';
 import '../services/app_runtime_config.dart';
 import '../services/external_maps_service.dart';
+import '../services/granmap_api.dart';
 import '../services/personal_data_service.dart';
 import '../theme/granmap_theme.dart';
 import '../widgets/campus_lens_canvas.dart';
+import '../widgets/anchor_scanner_sheet.dart';
 import '../widgets/campus_map_canvas.dart';
 import '../widgets/campus_twin_canvas.dart';
-import '../widgets/walk_view_canvas.dart';
 import 'advanced_route_screen.dart';
 
 class RouteScreen extends StatefulWidget {
@@ -25,6 +31,9 @@ class RouteScreen extends StatefulWidget {
   final CampusPoi destination;
   final Set<String> blockedEdgeIds;
   final int initialView;
+  final SensorService? sensors;
+  final GranMapApi? api;
+  final Future<String?> Function(BuildContext)? scanAnchor;
 
   const RouteScreen({
     super.key,
@@ -33,28 +42,43 @@ class RouteScreen extends StatefulWidget {
     required this.destination,
     this.blockedEdgeIds = const {},
     this.initialView = 0,
+    this.sensors,
+    this.api,
+    this.scanAnchor,
   });
 
   @override
   State<RouteScreen> createState() => _RouteScreenState();
 }
 
-class _RouteScreenState extends State<RouteScreen> {
+class _RouteScreenState extends State<RouteScreen> with WidgetsBindingObserver {
   final _navigation = const NavigationService();
   final _personal = PersonalDataService();
   final _presence = GranPresenceService.instance;
   final _externalMaps = const ExternalMapsService();
+  late final GranMapApi _api;
   RouteResult? _route;
   NavigationSession? _session;
   bool _accessibleOnly = AppPreferences.instance.accessibleRoutes;
   late int _view;
   int _lastFeedbackSegment = -1;
   bool _favorite = false;
+  bool _favoriteBusy = false;
+  int _favoriteGeneration = 0;
+  bool _physicalMode = false;
+  bool _positioningBusy = false;
+  bool _resumePhysical = false;
+  bool _foreground = true;
+  int _trackingGeneration = 0;
+  PdrPositioningService? _pdr;
+  StreamSubscription<PositionSample>? _physicalSubscription;
 
   @override
   void initState() {
     super.initState();
-    _view = widget.initialView.clamp(0, 3);
+    WidgetsBinding.instance.addObserver(this);
+    _api = widget.api ?? GranMapApi();
+    _view = widget.initialView == 2 ? 0 : widget.initialView.clamp(0, 3);
     if (_view == 3 && !AppRuntimeConfig.instance.arEnabled) _view = 0;
     _presence.addListener(_changed);
     _configure();
@@ -63,19 +87,316 @@ class _RouteScreenState extends State<RouteScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _trackingGeneration++;
+    unawaited(_physicalSubscription?.cancel());
+    unawaited(_pdr?.dispose());
     _session?.removeListener(_changed);
     _session?.dispose();
     _presence.removeListener(_changed);
     _personal.dispose();
+    if (widget.api == null) _api.dispose();
     super.dispose();
   }
 
-  Future<void> _loadFavorite() async {
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _foreground = state == AppLifecycleState.resumed;
+    if (state == AppLifecycleState.resumed) {
+      if (_resumePhysical) {
+        _resumePhysical = false;
+        unawaited(_trackSteps());
+      }
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _resumePhysical =
+          _resumePhysical || (_physicalMode && (_session?.isPlaying ?? false));
+      if (_physicalMode) {
+        _session?.pause();
+        unawaited(_stopPhysicalTracking());
+        setState(() => _positioningBusy = false);
+      }
+    }
+  }
+
+  Future<void> _stopPhysicalTracking() async {
+    _trackingGeneration++;
+    final subscription = _physicalSubscription;
+    _physicalSubscription = null;
+    final stopping = _pdr?.stop();
+    await subscription?.cancel();
+    await stopping;
+  }
+
+  Future<void> _startPreview() async {
+    _physicalMode = false;
+    _resumePhysical = false;
+    await _stopPhysicalTracking();
+    if (!mounted) return;
+    _session?.setExternalTracking(false);
+    _session?.reset();
+    _session?.start();
+  }
+
+  Future<void> _confirmPhysicalOrigin() async {
+    if (!AppRuntimeConfig.instance.physicalPositioningEnabled) return;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Confirme o ponto de partida',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${widget.origin.name} • '
+                '${widget.origin.floor == 0 ? 'Térreo' : widget.origin.floor == 1 ? 'Superior' : 'Piso ${widget.origin.floor}'}',
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Os sensores de passos e direção acompanham seu deslocamento a '
+                'partir desse ponto. Se trocar de piso, confirme sua localização '
+                'por uma placa QR ou manualmente nas ferramentas.',
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Estou nesse ponto — acompanhar passos'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed == true && mounted) await _trackSteps(resetOrigin: true);
+  }
+
+  Future<void> _trackSteps({bool resetOrigin = false}) async {
+    if (_positioningBusy || !mounted || !_foreground) return;
+    final session = _session;
+    if (session == null) return;
+    setState(() => _positioningBusy = true);
+    await _stopPhysicalTracking();
+    if (!mounted || !_foreground) return;
+    final generation = _trackingGeneration;
     try {
-      final favorites = await _personal.loadFavorites().timeout(
-        const Duration(seconds: 3),
+      _physicalMode = true;
+      session.setExternalTracking(true);
+      if (resetOrigin) session.reset();
+      _pdr ??= PdrPositioningService(
+        campus: widget.campus,
+        sensors: widget.sensors ?? AppSensorService.instance,
+        initialPosition: session.position,
       );
+      if (resetOrigin) {
+        final origin = session.position;
+        _pdr!.reanchor(
+          PositionSample(
+            x: origin.x,
+            y: origin.y,
+            z: origin.z,
+            floor: origin.floor,
+            headingDegrees: origin.headingDegrees,
+            accuracyMeters: 8,
+            confidence: .45,
+            timestamp: DateTime.now(),
+          ),
+        );
+      }
+      _physicalSubscription = _pdr!.positions.listen((position) {
+        if (mounted &&
+            generation == _trackingGeneration &&
+            _physicalMode &&
+            (_session?.isPlaying ?? false)) {
+          _session?.applyExternalPosition(position);
+        }
+      });
+      session.start();
+      await _pdr!.start();
+    } catch (_) {
+      if (!mounted || generation != _trackingGeneration) return;
+      await _stopPhysicalTracking();
+      session.pause();
       if (mounted) {
+        setState(() => _positioningBusy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Sensores indisponíveis. A prévia animada continua disponível.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted && generation == _trackingGeneration) {
+        setState(() => _positioningBusy = false);
+      }
+    }
+  }
+
+  Future<void> _toggleActive() async {
+    if (_positioningBusy) return;
+    if (!_physicalMode) {
+      _session?.toggle();
+    } else if (_session?.isPlaying ?? false) {
+      setState(() => _positioningBusy = true);
+      _session?.pause();
+      await _stopPhysicalTracking();
+      if (mounted) setState(() => _positioningBusy = false);
+    } else {
+      await _trackSteps();
+    }
+  }
+
+  void _applyPhysicalAnchor(PositionSample sample, {required String label}) {
+    if (!_physicalMode || _session == null) return;
+    final wasPlaying = _session!.isPlaying;
+    _pdr?.reanchor(sample);
+    _session!.applyExternalPosition(sample);
+    if (!wasPlaying) _session!.pause();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(label)));
+  }
+
+  Future<void> _reanchorQr() async {
+    final session = _session;
+    if (!_physicalMode || session == null) return;
+    final code = await (widget.scanAnchor ?? AnchorScannerSheet.show)(context);
+    if (code == null || !mounted || !_physicalMode) return;
+    try {
+      final anchors = await _api.fetchPositioningAnchors().timeout(
+        const Duration(seconds: 5),
+      );
+      if (!mounted || !_physicalMode || !identical(session, _session)) return;
+      final normalized = code.trim().toLowerCase();
+      final anchor = anchors
+          .where(
+            (item) =>
+                item['anchor_code']?.toString().toLowerCase() == normalized,
+          )
+          .firstOrNull;
+      if (anchor == null) throw StateError('Âncora não cadastrada.');
+      final sample = PositionSample(
+        x: (anchor['x'] as num).toDouble(),
+        y: (anchor['y'] as num).toDouble(),
+        z: (anchor['z'] as num).toDouble(),
+        floor: (anchor['floor'] as num).toInt(),
+        headingDegrees: ((anchor['heading'] ?? 0) as num).toDouble(),
+        accuracyMeters: .45,
+        confidence: .99,
+        timestamp: DateTime.now(),
+      );
+      if (!sample.x.isFinite ||
+          !sample.y.isFinite ||
+          !sample.z.isFinite ||
+          !widget.campus.floors.any((floor) => floor.level == sample.floor)) {
+        throw StateError('Âncora fora do mapa atual.');
+      }
+      _applyPhysicalAnchor(
+        sample,
+        label: 'Posição reancorada por QR • piso ${sample.floor}.',
+      );
+    } catch (_) {
+      if (mounted && _physicalMode && identical(session, _session)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Não foi possível confirmar o QR. Escolha um ponto em Confirmar posição manual.',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmManualPosition() async {
+    if (!_physicalMode) return;
+    final points =
+        widget.campus.pois
+            .where((poi) => widget.campus.nodeById(poi.navigationNode) != null)
+            .toList()
+          ..sort((a, b) {
+            final floor = a.floor.compareTo(b.floor);
+            return floor == 0 ? a.name.compareTo(b.name) : floor;
+          });
+    final point = await showModalBottomSheet<CampusPoi>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .65,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Confirme onde você está',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Selecione o ponto e o piso que você reconhece. '
+                      'A posição manual é aproximada; o GPS não determina o piso.',
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  children: [
+                    for (final poi in points)
+                      ListTile(
+                        leading: const Icon(Icons.location_on_outlined),
+                        title: Text('Estou em ${poi.name}'),
+                        subtitle: Text(
+                          '${poi.floor == 0 ? 'Térreo' : poi.floor == 1 ? 'Superior' : 'Piso ${poi.floor}'}${poi.sector.isEmpty ? '' : ' • ${poi.sector}'}',
+                        ),
+                        onTap: () => Navigator.of(context).pop(poi),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (point == null || !mounted || !_physicalMode) return;
+    _applyPhysicalAnchor(
+      PositionSample(
+        x: point.x,
+        y: point.y,
+        z: point.z,
+        floor: point.floor,
+        headingDegrees: _session?.position.headingDegrees ?? 0,
+        accuracyMeters: 8,
+        confidence: .45,
+        timestamp: DateTime.now(),
+      ),
+      label: 'Posição manual aproximada confirmada • piso ${point.floor}.',
+    );
+  }
+
+  Future<void> _loadFavorite() async {
+    final generation = _favoriteGeneration;
+    try {
+      final favorites = await _personal.loadCachedFavorites();
+      if (mounted && generation == _favoriteGeneration) {
         setState(() => _favorite = favorites.contains(widget.destination.id));
       }
     } catch (_) {
@@ -84,27 +405,32 @@ class _RouteScreenState extends State<RouteScreen> {
   }
 
   Future<void> _toggleFavorite() async {
+    if (_favoriteBusy) return;
+    _favoriteGeneration++;
     final previous = _favorite;
-    setState(() => _favorite = !previous);
+    setState(() {
+      _favoriteBusy = true;
+      _favorite = !previous;
+    });
     try {
-      final favorites = await _personal.loadFavorites().timeout(
-        const Duration(seconds: 3),
+      final favorites = await _personal.loadCachedFavorites();
+      final next = await _personal.toggleFavorite(
+        widget.destination.id,
+        favorites,
       );
-      final next = await _personal
-          .toggleFavorite(widget.destination.id, favorites)
-          .timeout(const Duration(seconds: 3));
       if (mounted) {
         setState(() => _favorite = next.contains(widget.destination.id));
       }
     } catch (_) {
       if (!mounted) return;
+      setState(() => _favorite = previous);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Favorito marcado; a sincronização será tentada depois.',
-          ),
+          content: Text('Não foi possível salvar o favorito. Tente novamente.'),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _favoriteBusy = false);
     }
   }
 
@@ -124,6 +450,7 @@ class _RouteScreenState extends State<RouteScreen> {
   }
 
   void _configure({bool resume = false}) {
+    final wasPlaying = _session?.isPlaying ?? false;
     _session?.removeListener(_changed);
     _session?.dispose();
     _route = _navigation.calculateRoute(
@@ -135,8 +462,14 @@ class _RouteScreenState extends State<RouteScreen> {
     );
     final route = _route;
     _session = route == null ? null : NavigationSession(route: route);
+    if (_physicalMode) _session?.setExternalTracking(true);
     _session?.addListener(_changed);
-    if (resume) _session?.start();
+    if (_physicalMode && _pdr != null) {
+      _session?.applyExternalPosition(_pdr!.current);
+      if (!wasPlaying) _session?.pause();
+    } else if (resume) {
+      _session?.start();
+    }
   }
 
   void _changed() {
@@ -161,7 +494,7 @@ class _RouteScreenState extends State<RouteScreen> {
       );
       return;
     }
-    setState(() => _view = value);
+    setState(() => _view = value == 2 ? 0 : value.clamp(0, 3));
   }
 
   Future<void> _handlePresenceAction() async {
@@ -241,10 +574,7 @@ class _RouteScreenState extends State<RouteScreen> {
           icon: const Icon(Icons.close_rounded),
         ),
         title: Text(
-          _presence.snapshot.isAway &&
-                  session.status != NavigationSessionStatus.ready
-              ? 'Prévia da rota interna'
-              : 'Navegação interna',
+          _physicalMode ? 'Acompanhando passos' : 'Rota no campus',
         ),
         actions: [
           Container(
@@ -257,7 +587,7 @@ class _RouteScreenState extends State<RouteScreen> {
           ),
           const SizedBox(width: 6),
           Text(
-            _confidenceLabel(session.position.confidence),
+            _physicalMode ? 'Em rota' : 'Prévia',
             style: Theme.of(context).textTheme.labelSmall
                 ?.copyWith(color: GranMapColors.textMuted),
           ),
@@ -269,86 +599,81 @@ class _RouteScreenState extends State<RouteScreen> {
           const SizedBox(width: 4),
         ],
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(child: _routeVisual(route, session)),
-          const Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 120,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Color(0xE6050C17), Color(0x00050C17)],
+      body: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                  child: _InstructionBanner(session: session),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 12, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          session.currentFloor == 0
+                              ? 'Térreo'
+                              : 'Piso ${session.currentFloor}',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      ),
+                      _RouteViewSelector(
+                        selected: _view,
+                        onSelected: _selectRouteView,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 14,
-            right: 74,
-            top: 12,
-            child: _InstructionBanner(session: session),
-          ),
-          Positioned(
-            right: 14,
-            top: 12,
-            child: _RouteViewSelector(
-              selected: _view,
-              onSelected: _selectRouteView,
-            ),
-          ),
-          Positioned(
-            left: 14,
-            top: 112,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-              decoration: BoxDecoration(
-                color: const Color(0xEA0A1728),
-                borderRadius: BorderRadius.circular(99),
-                border: Border.all(color: GranMapColors.line),
-              ),
-              child: Text(
-                session.currentFloor == 0
-                    ? 'Térreo'
-                    : 'Piso ${session.currentFloor}',
-                style: Theme.of(context).textTheme.labelSmall
-                    ?.copyWith(color: GranMapColors.textMuted),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: session.status == NavigationSessionStatus.ready
-                ? _DestinationSheet(
-                    destination: widget.destination,
-                    route: route,
-                    accessible: _accessibleOnly,
-                    favorite: _favorite,
-                    onFavorite: _toggleFavorite,
-                    onShare: _copyRoute,
-                    presence: _presence.snapshot,
-                    onPresenceAction: () => unawaited(_handlePresenceAction()),
-                    onPreview: session.start,
-                    onStart: session.start,
-                  )
-                : _ActiveNavigationSheet(
-                    route: route,
-                    session: session,
-                    onToggle: session.toggle,
-                    onRecalculate: () =>
-                        setState(() => _configure(resume: true)),
-                    onEnd: () => Navigator.of(context).pop(),
+                Expanded(
+                  child: ClipRect(
+                    key: const ValueKey('route-visual-viewport'),
+                    child: _routeVisual(route, session),
                   ),
-          ),
-        ],
+                ),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: constraints.maxHeight * .46,
+                  ),
+                  child: SingleChildScrollView(
+                    key: const ValueKey('route-details-sheet'),
+                    child: session.status == NavigationSessionStatus.ready
+                        ? _DestinationSheet(
+                            destination: widget.destination,
+                            route: route,
+                            accessible: _accessibleOnly,
+                            favorite: _favorite,
+                            onFavorite: _favoriteBusy ? null : _toggleFavorite,
+                            onShare: _copyRoute,
+                            presence: _presence.snapshot,
+                            onPresenceAction: () =>
+                                unawaited(_handlePresenceAction()),
+                            onPreview: () => unawaited(_startPreview()),
+                            onStart: () => unawaited(_confirmPhysicalOrigin()),
+                            sensorsEnabled: AppRuntimeConfig
+                                .instance
+                                .physicalPositioningEnabled,
+                          )
+                        : _ActiveNavigationSheet(
+                            route: route,
+                            session: session,
+                            physical: _physicalMode,
+                            busy: _positioningBusy,
+                            onToggle: () => unawaited(_toggleActive()),
+                            onPreview: () => unawaited(_startPreview()),
+                            onRecalculate: () =>
+                                setState(() => _configure(resume: true)),
+                            onEnd: () => Navigator.of(context).pop(),
+                          ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -360,13 +685,6 @@ class _RouteScreenState extends State<RouteScreen> {
         focusFloor: session.currentFloor,
         route: route.nodes,
         userPosition: session.position,
-      ),
-      2 => WalkViewCanvas(
-        campus: widget.campus,
-        route: route.nodes,
-        position: session.position,
-        segmentIndex: session.segmentIndex,
-        destination: widget.destination,
       ),
       3 => CampusLensCanvas(
         campus: widget.campus,
@@ -403,18 +721,12 @@ class _RouteScreenState extends State<RouteScreen> {
                 'Ferramentas de navegação',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 6),
-              Text(
-                'A interface simples usa o mesmo grafo X/Y/Z do modo técnico.',
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: GranMapColors.textMuted),
-              ),
               const SizedBox(height: 14),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Priorizar rota acessível'),
                 subtitle: const Text(
-                  'Evita conexões marcadas como não acessíveis.',
+                  'Evita escadas e prioriza rampas ou passagens acessíveis.',
                 ),
                 value: _accessibleOnly,
                 activeTrackColor: GranMapColors.orange,
@@ -428,26 +740,64 @@ class _RouteScreenState extends State<RouteScreen> {
                 },
               ),
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(this.context).push(
-                      MaterialPageRoute(
-                        builder: (_) => AdvancedRouteScreen(
-                          campus: widget.campus,
-                          origin: widget.origin,
-                          destination: widget.destination,
-                          blockedEdgeIds: widget.blockedEdgeIds,
-                        ),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.sensors_rounded),
-                  label: const Text('Sensores, QR, GPS e diagnóstico'),
+              if (_physicalMode) ...[
+                const Text(
+                  'Ao mudar de piso, confirme um ponto no novo piso para atualizar seu trajeto.',
                 ),
-              ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _positioningBusy
+                        ? null
+                        : () {
+                            Navigator.of(context).pop();
+                            unawaited(_reanchorQr());
+                          },
+                    icon: const Icon(Icons.qr_code_scanner_rounded),
+                    label: const Text('Ler placa QR'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _positioningBusy
+                        ? null
+                        : () {
+                            Navigator.of(context).pop();
+                            unawaited(_confirmManualPosition());
+                          },
+                    icon: const Icon(Icons.edit_location_alt_outlined),
+                    label: const Text('Confirmar posição manual'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              if (kDebugMode)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.of(context).pop();
+                      _session?.pause();
+                      if (_physicalMode) await _stopPhysicalTracking();
+                      if (!mounted) return;
+                      Navigator.of(this.context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AdvancedRouteScreen(
+                            campus: widget.campus,
+                            origin: widget.origin,
+                            destination: widget.destination,
+                            blockedEdgeIds: widget.blockedEdgeIds,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.sensors_rounded),
+                    label: const Text('Sensores e diagnóstico avançado'),
+                  ),
+                ),
             ],
           ),
         ),
@@ -536,7 +886,7 @@ class _InstructionBanner extends StatelessWidget {
                   Text(
                     session.remainingUnits == 0
                         ? 'destino'
-                        : '${session.remainingUnits.ceil()} u',
+                        : '~${session.remainingUnits.ceil()} m',
                     style: Theme.of(context).textTheme.labelSmall
                         ?.copyWith(color: GranMapColors.textMuted),
                   ),
@@ -554,12 +904,13 @@ class _DestinationSheet extends StatelessWidget {
   final RouteResult route;
   final bool accessible;
   final bool favorite;
-  final VoidCallback onFavorite;
+  final VoidCallback? onFavorite;
   final VoidCallback onShare;
   final VoidCallback onStart;
   final VoidCallback onPreview;
   final VoidCallback onPresenceAction;
   final GranPresenceSnapshot presence;
+  final bool sensorsEnabled;
 
   const _DestinationSheet({
     required this.destination,
@@ -572,6 +923,7 @@ class _DestinationSheet extends StatelessWidget {
     required this.onPreview,
     required this.onPresenceAction,
     required this.presence,
+    required this.sensorsEnabled,
   });
 
   @override
@@ -618,7 +970,7 @@ class _DestinationSheet extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      '${destination.floor == 0 ? 'Térreo' : 'Piso ${destination.floor}'} • ${route.routeCost.ceil()} unidades conceituais${accessible ? ' • acessível' : ''}',
+                      '${destination.floor == 0 ? 'Térreo' : destination.floor == 1 ? 'Superior' : 'Piso ${destination.floor}'} • ~${route.routeCost.ceil()} m${accessible ? ' • acessível' : ''}',
                       style: Theme.of(context).textTheme.bodySmall
                           ?.copyWith(color: GranMapColors.textMuted),
                     ),
@@ -648,37 +1000,46 @@ class _DestinationSheet extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _ArrivalStatus(presence: presence),
-          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: presence.isAtGran ? onStart : onPresenceAction,
+              onPressed: sensorsEnabled ? onStart : onPreview,
               icon: Icon(
-                presence.isAway
-                    ? Icons.directions_car_filled_rounded
-                    : presence.isAtGran
-                    ? Icons.near_me_rounded
-                    : Icons.my_location_rounded,
+                sensorsEnabled
+                    ? Icons.navigation_rounded
+                    : Icons.play_circle_outline_rounded,
                 size: 18,
               ),
               label: Text(
-                presence.isAway
-                    ? 'Ir até a Gran Tietê'
-                    : presence.isAtGran
-                    ? 'Iniciar navegação interna'
-                    : 'Confirmar minha localização',
+                sensorsEnabled ? 'Acompanhar passos' : 'Ver prévia da rota',
               ),
             ),
           ),
-          if (!presence.isAtGran) ...[
+          if (sensorsEnabled) ...[
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
                 onPressed: onPreview,
                 icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
-                label: const Text('Pré-visualizar rota interna'),
+                label: const Text('Ver prévia da rota'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          _ArrivalStatus(presence: presence),
+          if (!presence.isAtGran) ...[
+            TextButton.icon(
+              onPressed: onPresenceAction,
+              icon: Icon(
+                presence.isAway
+                    ? Icons.directions_car_filled_rounded
+                    : Icons.my_location_rounded,
+              ),
+              label: Text(
+                presence.isAway
+                    ? 'Ir até a Gran Tietê'
+                    : 'Atualizar localização externa',
               ),
             ),
           ],
@@ -700,7 +1061,7 @@ class _ArrivalStatus extends StatelessWidget {
         Icons.check_circle_rounded,
         GranMapColors.mint,
         'Você está na Gran Tietê',
-        'A rota interna pode começar agora.',
+        'GPS próximo da faculdade; confirme sua origem interna.',
       ),
       GranPresenceStatus.nearby => (
         Icons.directions_walk_rounded,
@@ -718,7 +1079,7 @@ class _ArrivalStatus extends StatelessWidget {
         Icons.location_disabled_rounded,
         GranMapColors.amber,
         'Permita sua localização',
-        'Assim o app sabe quando liberar a navegação interna.',
+        'O GPS indica proximidade da faculdade, sem identificar sala ou piso.',
       ),
       GranPresenceStatus.servicesDisabled => (
         Icons.gps_off_rounded,
@@ -783,6 +1144,9 @@ class _ActiveNavigationSheet extends StatelessWidget {
   final VoidCallback onToggle;
   final VoidCallback onRecalculate;
   final VoidCallback onEnd;
+  final VoidCallback onPreview;
+  final bool physical;
+  final bool busy;
 
   const _ActiveNavigationSheet({
     required this.route,
@@ -790,6 +1154,9 @@ class _ActiveNavigationSheet extends StatelessWidget {
     required this.onToggle,
     required this.onRecalculate,
     required this.onEnd,
+    required this.onPreview,
+    required this.physical,
+    required this.busy,
   });
 
   @override
@@ -811,6 +1178,13 @@ class _ActiveNavigationSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
+          Text(
+            physical
+                ? 'Passos e orientação • posição aproximada'
+                : 'Prévia animada • movimento simulado',
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+          const SizedBox(height: 6),
           for (var index = 0; index < visible.length; index++) ...[
             _CompactStep(instruction: visible[index], active: index == 0),
             if (index != visible.length - 1) const SizedBox(height: 6),
@@ -845,7 +1219,11 @@ class _ActiveNavigationSheet extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: session.hasArrived ? onEnd : onToggle,
+              onPressed: busy
+                  ? null
+                  : session.hasArrived
+                  ? onEnd
+                  : onToggle,
               icon: Icon(
                 session.isPlaying
                     ? Icons.pause_rounded
@@ -856,11 +1234,16 @@ class _ActiveNavigationSheet extends StatelessWidget {
                 session.hasArrived
                     ? 'Concluir'
                     : session.isPlaying
-                    ? 'Pausar navegação'
-                    : 'Continuar navegação',
+                    ? (physical ? 'Pausar sensores' : 'Pausar prévia')
+                    : (physical ? 'Retomar sensores' : 'Continuar prévia'),
               ),
             ),
           ),
+          if (physical)
+            TextButton(
+              onPressed: busy ? null : onPreview,
+              child: const Text('Usar prévia animada'),
+            ),
         ],
       ),
     );
@@ -924,31 +1307,35 @@ class _RouteViewSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const labels = ['2D', '3D', 'Walk', 'AR'];
+    const modes = {0: '2D', 1: '3D', 3: 'AR'};
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xF20A1728),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: GranMapColors.line),
       ),
-      child: Column(
+      child: Row(
         children: [
-          for (var index = 0; index < labels.length; index++)
+          for (final mode in modes.entries)
             InkWell(
-              onTap: () => onSelected(index),
+              onTap: () => onSelected(mode.key),
               child: Container(
-                width: 48,
+                width: 46,
                 height: 34,
                 alignment: Alignment.center,
-                color: selected == index
-                    ? GranMapColors.orange.withValues(alpha: .12)
+                color: selected == mode.key
+                    ? GranMapColors.orange.withValues(alpha: .16)
                     : Colors.transparent,
                 child: Text(
-                  labels[index],
+                  mode.value,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: selected == index
+                    color: selected == mode.key
                         ? GranMapColors.orange
                         : GranMapColors.textMuted,
+                    fontWeight: selected == mode.key
+                        ? FontWeight.w700
+                        : FontWeight.w500,
                   ),
                 ),
               ),
@@ -992,10 +1379,4 @@ Color _confidenceColor(double value) {
   if (value >= .75) return GranMapColors.mint;
   if (value >= .45) return GranMapColors.amber;
   return GranMapColors.danger;
-}
-
-String _confidenceLabel(double value) {
-  if (value >= .75) return 'Posição precisa';
-  if (value >= .45) return 'Posição aproximada';
-  return 'Baixa confiança';
 }

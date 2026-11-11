@@ -31,7 +31,7 @@ from settings import get_settings
 ADMIN_ROLES = {"coordination", "admin"}
 MODERATION_ROLES = {"moderator", "coordination", "admin"}
 USER_ADMIN_ROLES = {"admin"}
-APP_VERSION = "0.12.0"
+APP_VERSION = "0.12.1"
 settings = get_settings()
 
 
@@ -47,7 +47,7 @@ app = FastAPI(
     title="GranMap API",
     version=APP_VERSION,
     description=(
-        "Dados acadêmicos oficiais, conta pessoal e inteligência comunitária "
+        "Dados acadêmicos oficiais, conta do aluno e avisos comunitários "
         "do GranMap."
     ),
     lifespan=lifespan,
@@ -67,6 +67,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["ETag", "X-Request-ID", "Retry-After"],
 )
 install_http_middleware(app, settings)
 app.include_router(auth_router)
@@ -135,6 +136,8 @@ class ProposalIn(BaseModel):
 
 class VoteIn(BaseModel):
     agrees: bool
+    # Optional for old app versions. New clients keep the same revision on retry.
+    intent_version: int | None = Field(default=None, ge=1, le=9007199254740991)
 
 
 class ModerationIn(BaseModel):
@@ -960,8 +963,13 @@ def vote(
 ):
     user, _ = require_user(authorization)
     with connect() as con:
+        # Serialize consensus updates as well as individual votes. A late HTTP
+        # retry must not replace the user's newer intention.
+        if not get_settings().database_url:
+            con.execute("BEGIN IMMEDIATE")
         proposal = con.execute(
-            "SELECT * FROM proposals WHERE id = ?",
+            "SELECT * FROM proposals WHERE id = ?"
+            + (" FOR UPDATE" if get_settings().database_url else ""),
             (proposal_id,),
         ).fetchone()
         if proposal is None:
@@ -972,32 +980,29 @@ def vote(
                 detail="Esta proposta foi encerrada pela moderação.",
             )
 
-        existing = con.execute(
+        revision_guard = (
+            " WHERE votes.intent_version < excluded.intent_version"
+            if data.intent_version is not None else ""
+        )
+        revision_update = (
+            ", intent_version = excluded.intent_version"
+            if data.intent_version is not None else ""
+        )
+        changed = con.execute(
             """
-            SELECT id
-            FROM votes
-            WHERE proposal_id = ? AND voter_user_id = ?
-            """,
-            (proposal_id, user["id"]),
-        ).fetchone()
-        if existing is None:
-            con.execute(
-                """
-                INSERT INTO votes(
-                    proposal_id, voter_name, voter_user_id, agrees
-                ) VALUES (?, ?, ?, ?)
-                """,
-                (proposal_id, user["name"], user["id"], int(data.agrees)),
-            )
-        else:
-            con.execute(
-                """
-                UPDATE votes
-                SET agrees = ?, voter_name = ?, created_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (int(data.agrees), user["name"], existing["id"]),
-            )
+            INSERT INTO votes(
+                proposal_id, voter_name, voter_user_id, agrees, intent_version
+            ) VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT(proposal_id, voter_user_id) WHERE voter_user_id IS NOT NULL
+            DO UPDATE SET agrees = excluded.agrees,
+                voter_name = excluded.voter_name, created_at = CURRENT_TIMESTAMP
+            """ + revision_update + revision_guard,
+            (proposal_id, user["name"], user["id"], int(data.agrees),
+             data.intent_version or 0),
+        )
+        if changed.rowcount == 0:
+            con.commit()
+            return _proposal_with_votes(proposal_id, user["id"])
 
         counts = con.execute(
             """
