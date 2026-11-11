@@ -62,7 +62,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
     try {
       final courses = await _api.fetchCourses().timeout(
-        const Duration(seconds: 5),
+        const Duration(seconds: 6),
       );
       if (!mounted) return;
       setState(() {
@@ -201,9 +201,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               enabled: !_saving,
                               textInputAction: TextInputAction.next,
                               textCapitalization: TextCapitalization.words,
+                              onChanged: (_) {
+                                if (_nameError != null || _error != null) {
+                                  setState(() {
+                                    _nameError = null;
+                                    _error = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Nome',
                                 errorText: _nameError,
+                                counterText: '',
                                 prefixIcon: const Icon(Icons.badge_outlined),
                               ),
                             ),
@@ -215,9 +224,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.email],
+                              onChanged: (_) {
+                                if (_emailError != null || _error != null) {
+                                  setState(() {
+                                    _emailError = null;
+                                    _error = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: 'E-mail',
                                 errorText: _emailError,
+                                counterText: '',
                                 prefixIcon: const Icon(Icons.email_outlined),
                               ),
                             ),
@@ -229,9 +247,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               obscureText: _hidePassword,
                               textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.newPassword],
+                              onChanged: (_) {
+                                if (_passwordError != null || _error != null) {
+                                  setState(() {
+                                    _passwordError = null;
+                                    _error = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
-                                labelText: 'Senha (mínimo 10 caracteres)',
+                                labelText: 'Senha',
+                                helperText: 'Use pelo menos 10 caracteres.',
                                 errorText: _passwordError,
+                                counterText: '',
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
                                   tooltip: _hidePassword
@@ -334,12 +362,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     enabled: !_saving,
                                     textInputAction: TextInputAction.done,
                                     onSubmitted: (_) => _register(),
+                                    onChanged: (_) {
+                                      if (_groupError != null || _error != null) {
+                                        setState(() {
+                                          _groupError = null;
+                                          _error = null;
+                                        });
+                                      }
+                                    },
                                     textCapitalization:
                                         TextCapitalization.characters,
                                     decoration: InputDecoration(
                                       labelText: 'Turma',
                                       hintText: 'EC4A',
                                       errorText: _groupError,
+                                      counterText: '',
                                     ),
                                   ),
                                 ),
@@ -351,12 +388,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ? const SizedBox.shrink()
                                   : Padding(
                                       padding: const EdgeInsets.only(top: 12),
-                                      child: Text(
-                                        _error!,
-                                        style: TextStyle(
+                                      child: Container(
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.all(11),
+                                        decoration: BoxDecoration(
                                           color: Theme.of(context)
                                               .colorScheme
-                                              .error,
+                                              .errorContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _error!,
+                                          style: TextStyle(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onErrorContainer,
+                                          ),
                                         ),
                                       ),
                                     ),

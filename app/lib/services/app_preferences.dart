@@ -7,6 +7,7 @@ class AppPreferences extends ChangeNotifier {
   AppPreferences._();
 
   static final AppPreferences instance = AppPreferences._();
+  static const _prefsTimeout = Duration(milliseconds: 1200);
 
   SharedPreferencesAsync? _preferences;
   bool _initialized = false;
@@ -30,7 +31,7 @@ class AppPreferences extends ChangeNotifier {
         preferences.getBool('granmap.preferences.location'),
         preferences.getBool('granmap.preferences.high_contrast'),
         preferences.getBool('granmap.preferences.accessible_routes'),
-      ]);
+      ]).timeout(_prefsTimeout);
       _onboardingCompleted = values[0] ?? false;
       // Desde a v1.4 os sensores ficam ativos somente durante o uso do app.
       // Ignoramos uma desativação persistida por versões anteriores.
@@ -73,7 +74,7 @@ class AppPreferences extends ChangeNotifier {
     notifyListeners();
     try {
       final preferences = _preferences ??= SharedPreferencesAsync();
-      await preferences.setBool(key, value);
+      await preferences.setBool(key, value).timeout(_prefsTimeout);
     } catch (_) {
       // A preferência permanece válida durante esta execução.
     }

@@ -8,7 +8,9 @@ import 'register_screen.dart';
 import 'password_reset_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AppSession? session;
+
+  const LoginScreen({super.key, this.session});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,6 +22,10 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _hidePassword = true;
   String? _error;
+  String? _emailError;
+  String? _passwordError;
+
+  AppSession get _session => widget.session ?? AppSession.instance;
 
   @override
   void dispose() {
@@ -29,22 +35,37 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_email.text.trim().isEmpty || _password.text.isEmpty) return;
+    if (_loading) return;
+    final email = _email.text.trim();
+    final emailError = email.isEmpty
+        ? 'Informe seu e-mail.'
+        : !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)
+        ? 'Informe um e-mail válido.'
+        : null;
+    final passwordError = _password.text.trim().isEmpty
+        ? 'Informe sua senha.'
+        : null;
 
     setState(() {
-      _loading = true;
+      _emailError = emailError;
+      _passwordError = passwordError;
+      _loading = emailError == null && passwordError == null;
       _error = null;
     });
+    if (!_loading) return;
+    FocusScope.of(context).unfocus();
 
     try {
-      await AppSession.instance.login(
-        email: _email.text.trim(),
-        password: _password.text,
-      );
+      await _session.login(email: email, password: _password.text);
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.message);
+    } on SessionException catch (error) {
+      if (!mounted) return;
       setState(() => _error = error.message);
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Não foi possível acessar o GranMap Backend.');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -87,29 +108,55 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             TextField(
                               controller: _email,
+                              enabled: !_loading,
                               keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
+                              onSubmitted: (_) =>
+                                  FocusScope.of(context).nextFocus(),
+                              onChanged: (_) {
+                                if (_emailError != null || _error != null) {
+                                  setState(() {
+                                    _emailError = null;
+                                    _error = null;
+                                  });
+                                }
+                              },
                               autofillHints: const [AutofillHints.email],
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'E-mail',
-                                prefixIcon: Icon(Icons.email_outlined),
+                                errorText: _emailError,
+                                prefixIcon: const Icon(Icons.email_outlined),
                               ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _password,
+                              enabled: !_loading,
                               obscureText: _hidePassword,
+                              textInputAction: TextInputAction.done,
                               autofillHints: const [AutofillHints.password],
                               onSubmitted: (_) => _login(),
+                              onChanged: (_) {
+                                if (_passwordError != null || _error != null) {
+                                  setState(() {
+                                    _passwordError = null;
+                                    _error = null;
+                                  });
+                                }
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Senha',
+                                errorText: _passwordError,
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
                                   tooltip: _hidePassword
                                       ? 'Mostrar senha'
                                       : 'Ocultar senha',
-                                  onPressed: () => setState(
-                                    () => _hidePassword = !_hidePassword,
-                                  ),
+                                  onPressed: _loading
+                                      ? null
+                                      : () => setState(
+                                          () => _hidePassword = !_hidePassword,
+                                        ),
                                   icon: Icon(
                                     _hidePassword
                                         ? Icons.visibility_outlined
@@ -190,7 +237,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                                 .push<bool>(
                                                   MaterialPageRoute(
                                                     builder: (_) =>
-                                                        const RegisterScreen(),
+                                                        RegisterScreen(
+                                                          session: _session,
+                                                        ),
                                                   ),
                                                 );
                                         if (!context.mounted) return;

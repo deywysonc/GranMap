@@ -13,7 +13,7 @@ class AppSession extends ChangeNotifier {
     GranMapApi? api,
     this.storageTimeout = const Duration(seconds: 10),
     this.notificationTimeout = const Duration(seconds: 5),
-    this.authTimeout = const Duration(seconds: 8),
+    this.authTimeout = const Duration(seconds: 15),
   }) : _store = store ?? LocalStore(),
        _api = api ?? GranMapApi();
 
@@ -123,6 +123,9 @@ class AppSession extends ChangeNotifier {
         result = await _api
             .login(email: email, password: password)
             .timeout(authTimeout, onTimeout: _authTimedOut);
+      } on ApiException catch (loginError) {
+        if (loginError.statusCode == 429) rethrow;
+        throw error;
       } catch (_) {
         throw error;
       }

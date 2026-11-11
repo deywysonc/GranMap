@@ -11,6 +11,7 @@ import '../positioning/magnetic_fingerprint_matcher.dart';
 
 class GranMapApi {
   static const _defaultTimeout = Duration(seconds: 6);
+  static const _authTimeout = Duration(seconds: 12);
 
   final http.Client _client;
   final String baseUrl;
@@ -194,6 +195,7 @@ class GranMapApi {
         'semester': semester,
         'group_name': group,
       }),
+      timeout: _authTimeout,
     );
 
     _ensureSuccess(response);
@@ -211,6 +213,7 @@ class GranMapApi {
       '/auth/login',
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email, 'password': password}),
+      timeout: _authTimeout,
     );
 
     _ensureSuccess(response);
@@ -225,6 +228,7 @@ class GranMapApi {
       '/auth/password-reset/request',
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'email': email}),
+      timeout: _authTimeout,
     );
     _ensureSuccess(response);
     return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
@@ -239,6 +243,7 @@ class GranMapApi {
       '/auth/password-reset/confirm',
       headers: const {'Content-Type': 'application/json'},
       body: jsonEncode({'token': token, 'new_password': newPassword}),
+      timeout: _authTimeout,
     );
     _ensureSuccess(response);
   }
@@ -394,12 +399,13 @@ class GranMapApi {
     required int proposalId,
     required bool agrees,
     String? idempotencyKey,
+    int? intentVersion,
   }) async {
     final response = await _request(
       'POST',
       '/proposals/$proposalId/votes',
       headers: _authHeaders(token, json: true),
-      body: jsonEncode({'agrees': agrees}),
+      body: jsonEncode({'agrees': agrees, 'intent_version': ?intentVersion}),
       timeout: const Duration(seconds: 4),
       idempotencyKey: idempotencyKey,
     );
@@ -597,7 +603,12 @@ class GranMapApi {
     try {
       final decoded =
           jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      message = (decoded['detail'] ?? message).toString();
+      final detail = decoded['detail'];
+      if (detail is String && detail.trim().isNotEmpty) {
+        message = detail;
+      } else if (detail is List && detail.isNotEmpty) {
+        message = 'Confira os dados informados e tente novamente.';
+      }
     } catch (_) {}
 
     final status = response.statusCode;

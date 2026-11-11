@@ -212,19 +212,47 @@ class LocalStore {
 
   Future<List<String>> readFavorites(String scope) async {
     final key = _scopeKey('favorites', scope);
-    if (!_usesDatabase) return await _prefs.getStringList(key) ?? <String>[];
-    final raw = await _database.read(key);
+    if (!_usesDatabase) {
+      try {
+        final values = await _prefs.getStringList(key).timeout(_ioTimeout);
+        if (values != null) return values;
+      } catch (_) {}
+      final cached = _memoryCache[key];
+      if (cached == null) return <String>[];
+      try {
+        return (jsonDecode(cached) as List<dynamic>)
+            .map((item) => '$item')
+            .toList();
+      } catch (_) {
+        return <String>[];
+      }
+    }
+    String? raw;
+    try {
+      raw = await _database.read(key).timeout(_ioTimeout);
+    } catch (_) {}
+    raw ??= _memoryCache[key];
     if (raw == null) return <String>[];
-    return (jsonDecode(raw) as List<dynamic>).map((item) => '$item').toList();
+    try {
+      return (jsonDecode(raw) as List<dynamic>).map((item) => '$item').toList();
+    } catch (_) {
+      return <String>[];
+    }
   }
 
   Future<void> saveFavorites(String scope, List<String> ids) async {
     final clean = ids.toSet().toList()..sort();
+    final encoded = jsonEncode(clean);
     final key = _scopeKey('favorites', scope);
+    _memoryCache[key] = encoded;
     if (_usesDatabase) {
-      await _database.put(key, jsonEncode(clean));
+      try {
+        await _database.put(key, encoded).timeout(_ioTimeout);
+      } catch (_) {}
     } else {
-      await _prefs.setStringList(key, clean);
+      try {
+        await _prefs.setStringList(key, clean).timeout(_ioTimeout);
+      } catch (_) {}
     }
   }
 

@@ -19,37 +19,62 @@ import 'route_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final CampusMap campus;
+  final Set<String> blockedEdgeIds;
+  final PersonalDataService? personalDataService;
+  final AppSession? session;
 
-  const ProfileScreen({super.key, required this.campus});
+  const ProfileScreen({
+    super.key,
+    required this.campus,
+    this.blockedEdgeIds = const {},
+    this.personalDataService,
+    this.session,
+  });
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _personal = PersonalDataService();
+  late final PersonalDataService _personal;
+  late final AppSession _session;
   List<String> _favorites = const [];
   List<NavigationHistoryItem> _history = const [];
+  int _loadGeneration = 0;
+  late String _storageScope;
+  bool _clearingSession = false;
   @override
   void initState() {
     super.initState();
-    AppSession.instance.addListener(_sessionChanged);
+    _session = widget.session ?? AppSession.instance;
+    _personal =
+        widget.personalDataService ?? PersonalDataService(session: _session);
+    _storageScope = _currentSessionScope;
+    _session.addListener(_sessionChanged);
     AppPreferences.instance.addListener(_preferencesChanged);
     _load();
   }
 
   @override
   void dispose() {
-    AppSession.instance.removeListener(_sessionChanged);
+    _session.removeListener(_sessionChanged);
     AppPreferences.instance.removeListener(_preferencesChanged);
-    _personal.dispose();
+    if (widget.personalDataService == null) _personal.dispose();
     super.dispose();
   }
 
   void _sessionChanged() {
     if (!mounted) return;
-    setState(() {});
-    _load();
+    final scope = _currentSessionScope;
+    final changed = scope != _storageScope;
+    setState(() {
+      if (changed) {
+        _storageScope = scope;
+        _favorites = const [];
+        _history = const [];
+      }
+    });
+    if (changed) _load();
   }
 
   void _preferencesChanged() {
@@ -57,30 +82,75 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
+    final generation = ++_loadGeneration;
+    final scope = _currentSessionScope;
+    await Future.wait<void>([
+      _loadFavorites(generation, scope),
+      _loadHistory(generation, scope),
+    ]);
+  }
+
+  String get _currentSessionScope =>
+      '${_session.storageScope}|${_session.token}';
+
+  bool _isCurrentLoad(int generation, String scope) =>
+      mounted && generation == _loadGeneration && scope == _currentSessionScope;
+
+  Future<void> _loadFavorites(int generation, String scope) async {
     try {
-      final values = await Future.wait<dynamic>([
-        _personal.loadFavorites().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => _favorites,
-        ),
-        _personal.loadHistory().timeout(
-          const Duration(seconds: 3),
-          onTimeout: () => _history,
-        ),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _favorites = values[0] as List<String>;
-        _history = values[1] as List<NavigationHistoryItem>;
-      });
+      final cached = await _personal.loadCachedFavorites().timeout(
+        const Duration(seconds: 2),
+      );
+      if (!_isCurrentLoad(generation, scope)) return;
+      setState(() => _favorites = cached);
     } catch (_) {
-      // O perfil permanece utilizável mesmo se o armazenamento estiver ocupado.
+      // A cópia local não impede tentar a sincronização.
+    }
+    if (!_isCurrentLoad(generation, scope)) return;
+    try {
+      final favorites = await _personal.loadFavorites().timeout(
+        const Duration(seconds: 6),
+      );
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _favorites = favorites);
+      }
+    } catch (_) {
+      // Os favoritos locais continuam disponíveis durante uma falha da rede.
+    }
+  }
+
+  Future<void> _loadHistory(int generation, String scope) async {
+    try {
+      final history = await _personal.loadHistory().timeout(
+        const Duration(seconds: 6),
+      );
+      if (_isCurrentLoad(generation, scope)) {
+        setState(() => _history = history);
+      }
+    } catch (_) {
+      // O perfil mantém o histórico já carregado.
+    }
+  }
+
+  Future<void> _clearSession() async {
+    if (_clearingSession) return;
+    setState(() => _clearingSession = true);
+    try {
+      await _session.logout();
+      if (!mounted) return;
+      if (_session.persistenceError == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sessão removida deste aparelho.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _clearingSession = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final session = AppSession.instance;
+    final session = _session;
     final preferences = AppPreferences.instance;
     final user = session.user;
     return RefreshIndicator(
@@ -99,6 +169,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ? _GuestProfile(
                       favorites: _favorites.length,
                       routes: _history.length,
+                      persistenceError: session.persistenceError,
+                      clearingSession: _clearingSession,
+                      onClearSession: _clearSession,
                       onLogin: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const LoginScreen()),
                       ),
@@ -153,8 +226,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               title: 'Minha grade de aulas',
                               onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
-                                  builder: (_) =>
-                                      AcademicScreen(campus: widget.campus),
+                                  builder: (_) => AcademicScreen(
+                                    campus: widget.campus,
+                                    blockedEdgeIds: widget.blockedEdgeIds,
+                                    session: _session,
+                                  ),
                                 ),
                               ),
                             ),
@@ -351,6 +427,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           campus: widget.campus,
           origin: origin,
           destination: poi,
+          blockedEdgeIds: widget.blockedEdgeIds,
         ),
       ),
     );
@@ -450,12 +527,16 @@ class _IdentityHeader extends StatelessWidget {
     );
   }
 
-  static String _initials(String name) => name
-      .trim()
-      .split(RegExp(r'\s+'))
-      .take(2)
-      .map((word) => word[0].toUpperCase())
-      .join();
+  static String _initials(String name) {
+    final initials = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty)
+        .take(2)
+        .map((word) => word[0].toUpperCase())
+        .join();
+    return initials.isEmpty ? 'G' : initials;
+  }
 }
 
 class _Metric extends StatelessWidget {
@@ -600,11 +681,17 @@ class _GuestProfile extends StatelessWidget {
   final int favorites;
   final int routes;
   final VoidCallback onLogin;
+  final String? persistenceError;
+  final bool clearingSession;
+  final VoidCallback onClearSession;
 
   const _GuestProfile({
     required this.favorites,
     required this.routes,
     required this.onLogin,
+    this.persistenceError,
+    required this.clearingSession,
+    required this.onClearSession,
   });
 
   @override
@@ -625,6 +712,33 @@ class _GuestProfile extends StatelessWidget {
               ?.copyWith(color: GranMapColors.textMuted),
         ),
         const SizedBox(height: 18),
+        if (persistenceError != null || clearingSession) ...[
+          if (persistenceError != null)
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                persistenceError!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium
+                    ?.copyWith(color: GranMapColors.coral),
+              ),
+            ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: clearingSession ? null : onClearSession,
+            icon: clearingSession
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout_rounded),
+            label: Text(
+              clearingSession ? 'Limpando sessão...' : 'Tentar limpar sessão',
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
