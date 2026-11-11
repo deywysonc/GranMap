@@ -12,9 +12,12 @@ import '../storage/offline_database.dart';
 import '../storage/secure_session_store.dart';
 
 class LocalStore {
+  static const _ioTimeout = Duration(milliseconds: 1200);
+
   final SharedPreferencesAsync _prefs;
   final OfflineDatabase _database;
   late final SecureSessionStore _secureSession;
+  final Map<String, String> _memoryCache = <String, String>{};
 
   LocalStore({SharedPreferencesAsync? prefs, OfflineDatabase? database})
     : _prefs = prefs ?? SharedPreferencesAsync(),
@@ -33,38 +36,46 @@ class LocalStore {
           defaultTargetPlatform == TargetPlatform.macOS);
 
   Future<void> _write(String key, String value) async {
+    _memoryCache[key] = value;
     try {
-      await _prefs.setString(key, value);
+      await _prefs.setString(key, value).timeout(_ioTimeout);
     } catch (_) {}
 
     if (_usesDatabase) {
       try {
-        await _database.put(key, value);
+        await _database.put(key, value).timeout(_ioTimeout);
       } catch (_) {}
     }
   }
 
   Future<String?> _read(String key) async {
-    if (_usesDatabase) {
-      try {
-        final val = await _database.read(key);
-        if (val != null) return val;
-      } catch (_) {}
-    }
     try {
-      return await _prefs.getString(key);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _remove(String key) async {
-    try {
-      await _prefs.remove(key);
+      final prefVal = await _prefs.getString(key).timeout(_ioTimeout);
+      if (prefVal != null) {
+        _memoryCache[key] = prefVal;
+        return prefVal;
+      }
     } catch (_) {}
     if (_usesDatabase) {
       try {
-        await _database.remove(key);
+        final dbVal = await _database.read(key).timeout(_ioTimeout);
+        if (dbVal != null) {
+          _memoryCache[key] = dbVal;
+          return dbVal;
+        }
+      } catch (_) {}
+    }
+    return _memoryCache[key];
+  }
+
+  Future<void> _remove(String key) async {
+    _memoryCache.remove(key);
+    try {
+      await _prefs.remove(key).timeout(_ioTimeout);
+    } catch (_) {}
+    if (_usesDatabase) {
+      try {
+        await _database.remove(key).timeout(_ioTimeout);
       } catch (_) {}
     }
   }

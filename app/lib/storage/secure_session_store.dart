@@ -5,9 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 class SecureSessionStore {
   static const _tokenKey = 'granmap.auth.token';
   static const _fallbackTokenKey = 'granmap.auth.token_fallback';
+  static const _opTimeout = Duration(milliseconds: 1200);
 
   final FlutterSecureStorage _secureStorage;
   final SharedPreferencesAsync _preferences;
+  String? _memoryToken;
 
   SecureSessionStore({
     FlutterSecureStorage? secureStorage,
@@ -19,47 +21,71 @@ class SecureSessionStore {
        _preferences = webPreferences ?? SharedPreferencesAsync();
 
   Future<void> writeToken(String token) async {
+    _memoryToken = token;
     try {
-      await _preferences.setString(_fallbackTokenKey, token);
+      await _preferences
+          .setString(_fallbackTokenKey, token)
+          .timeout(_opTimeout);
     } catch (_) {}
 
     if (kIsWeb) {
-      await _preferences.setString(_tokenKey, token);
+      try {
+        await _preferences.setString(_tokenKey, token).timeout(_opTimeout);
+      } catch (_) {}
       return;
     }
     try {
-      await _secureStorage.write(key: _tokenKey, value: token);
-    } catch (_) {
-      try {
-        await _secureStorage.deleteAll();
-        await _secureStorage.write(key: _tokenKey, value: token);
-      } catch (_) {}
-    }
+      await _secureStorage
+          .write(key: _tokenKey, value: token)
+          .timeout(_opTimeout);
+    } catch (_) {}
   }
 
   Future<String?> readToken() async {
-    if (kIsWeb) return _preferences.getString(_tokenKey);
+    if (kIsWeb) {
+      try {
+        final token = await _preferences
+            .getString(_tokenKey)
+            .timeout(_opTimeout);
+        if (token != null && token.isNotEmpty) {
+          _memoryToken = token;
+          return token;
+        }
+      } catch (_) {}
+      return _memoryToken;
+    }
     try {
-      final token = await _secureStorage.read(key: _tokenKey);
-      if (token != null && token.isNotEmpty) return token;
+      final fallback = await _preferences
+          .getString(_fallbackTokenKey)
+          .timeout(_opTimeout);
+      if (fallback != null && fallback.isNotEmpty) {
+        _memoryToken = fallback;
+        return fallback;
+      }
     } catch (_) {}
     try {
-      return await _preferences.getString(_fallbackTokenKey);
-    } catch (_) {
-      return null;
-    }
+      final token = await _secureStorage
+          .read(key: _tokenKey)
+          .timeout(_opTimeout);
+      if (token != null && token.isNotEmpty) {
+        _memoryToken = token;
+        return token;
+      }
+    } catch (_) {}
+    return _memoryToken;
   }
 
   Future<void> clearToken() async {
+    _memoryToken = null;
     try {
-      await _preferences.remove(_tokenKey);
+      await _preferences.remove(_tokenKey).timeout(_opTimeout);
     } catch (_) {}
     try {
-      await _preferences.remove(_fallbackTokenKey);
+      await _preferences.remove(_fallbackTokenKey).timeout(_opTimeout);
     } catch (_) {}
     if (!kIsWeb) {
       try {
-        await _secureStorage.delete(key: _tokenKey);
+        await _secureStorage.delete(key: _tokenKey).timeout(_opTimeout);
       } catch (_) {}
     }
   }

@@ -6,14 +6,17 @@ import '../theme/granmap_theme.dart';
 import '../widgets/granmap_ui.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final AppSession? session;
+  final GranMapApi? api;
+
+  const RegisterScreen({super.key, this.session, this.api});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final GranMapApi _api = GranMapApi();
+  late final GranMapApi _api;
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -22,20 +25,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
   List<String> _courses = const [];
   String? _course;
   int _semester = 1;
-  bool _loadingCourses = true;
+  bool _loadingCourses = false;
   bool _saving = false;
   bool _hidePassword = true;
   String? _error;
+  String? _coursesError;
+  String? _nameError;
+  String? _emailError;
+  String? _passwordError;
+  String? _groupError;
+
+  AppSession get _session => widget.session ?? AppSession.instance;
 
   @override
   void initState() {
     super.initState();
+    _api = widget.api ?? GranMapApi();
     _loadCourses();
   }
 
   @override
   void dispose() {
-    _api.dispose();
+    if (widget.api == null) _api.dispose();
     _name.dispose();
     _email.dispose();
     _password.dispose();
@@ -44,16 +55,36 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _loadCourses() async {
+    if (_loadingCourses) return;
+    setState(() {
+      _loadingCourses = true;
+      _coursesError = null;
+    });
     try {
-      final courses = await _api.fetchCourses();
+      final courses = await _api.fetchCourses().timeout(
+        const Duration(seconds: 5),
+      );
       if (!mounted) return;
       setState(() {
         _courses = courses;
         _course = courses.isEmpty ? null : courses.first;
+        if (courses.isEmpty) {
+          _coursesError = 'Nenhum curso disponível. Tente novamente.';
+        }
       });
     } catch (_) {
       if (mounted) {
-        setState(() => _error = 'Não foi possível carregar os cursos.');
+        setState(() {
+          _coursesError = 'Não foi possível carregar os cursos.';
+          if (_courses.isEmpty) {
+            _courses = const [
+              'Engenharia da Computação',
+              'Administração',
+              'Agronomia',
+            ];
+            _course ??= _courses.first;
+          }
+        });
       }
     } finally {
       if (mounted) setState(() => _loadingCourses = false);
@@ -61,26 +92,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (_course == null ||
-        _name.text.trim().isEmpty ||
-        _email.text.trim().isEmpty ||
-        _password.text.length < 6 ||
-        _group.text.trim().isEmpty) {
-      setState(() {
-        _error = 'Preencha todos os campos. A senha deve ter 6+ caracteres.';
-      });
-      return;
-    }
-
+    if (_saving || _loadingCourses) return;
+    final email = _email.text.trim();
     setState(() {
-      _saving = true;
-      _error = null;
+      final nameLength = _name.text.trim().length;
+      _nameError = nameLength < 2 || nameLength > 100
+          ? 'Informe um nome entre 2 e 100 caracteres.'
+          : null;
+      _emailError = email.isEmpty
+          ? 'Informe seu e-mail.'
+          : email.length < 5 ||
+                email.length > 160 ||
+                !RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)
+          ? 'Informe um e-mail válido.'
+          : null;
+      _passwordError = _password.text.isEmpty
+          ? 'Informe uma senha.'
+          : _password.text.length < 10 || _password.text.length > 128
+          ? 'Use uma senha entre 10 e 128 caracteres.'
+          : null;
+      final groupLength = _group.text.trim().length;
+      _groupError = groupLength == 0 || groupLength > 60
+          ? 'Informe uma turma com até 60 caracteres.'
+          : null;
+      _error =
+          _course == null ||
+              _course!.trim().length < 2 ||
+              _course!.trim().length > 160
+          ? 'Selecione um curso válido para continuar.'
+          : null;
+      _saving = [
+        _nameError,
+        _emailError,
+        _passwordError,
+        _groupError,
+        _error,
+      ].every((error) => error == null);
     });
+    if (!_saving) return;
+    FocusScope.of(context).unfocus();
 
     try {
-      await AppSession.instance.register(
+      await _session.register(
         name: _name.text.trim(),
-        email: _email.text.trim(),
+        email: email,
         password: _password.text,
         course: _course!,
         semester: _semester,
@@ -88,8 +143,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.message);
+    } on SessionException catch (error) {
+      if (!mounted) return;
       setState(() => _error = error.message);
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = 'Não foi possível criar a conta.');
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -137,33 +197,51 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             const SizedBox(height: 14),
                             TextField(
                               controller: _name,
+                              maxLength: 100,
+                              enabled: !_saving,
+                              textInputAction: TextInputAction.next,
                               textCapitalization: TextCapitalization.words,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Nome',
-                                prefixIcon: Icon(Icons.badge_outlined),
+                                errorText: _nameError,
+                                prefixIcon: const Icon(Icons.badge_outlined),
                               ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _email,
+                              maxLength: 160,
+                              enabled: !_saving,
                               keyboardType: TextInputType.emailAddress,
+                              textInputAction: TextInputAction.next,
                               autofillHints: const [AutofillHints.email],
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'E-mail',
-                                prefixIcon: Icon(Icons.email_outlined),
+                                errorText: _emailError,
+                                prefixIcon: const Icon(Icons.email_outlined),
                               ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _password,
+                              maxLength: 128,
+                              enabled: !_saving,
                               obscureText: _hidePassword,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.newPassword],
                               decoration: InputDecoration(
-                                labelText: 'Senha (mínimo 6 caracteres)',
+                                labelText: 'Senha (mínimo 10 caracteres)',
+                                errorText: _passwordError,
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 suffixIcon: IconButton(
-                                  onPressed: () => setState(
-                                    () => _hidePassword = !_hidePassword,
-                                  ),
+                                  tooltip: _hidePassword
+                                      ? 'Mostrar senha'
+                                      : 'Ocultar senha',
+                                  onPressed: _saving
+                                      ? null
+                                      : () => setState(
+                                          () => _hidePassword = !_hidePassword,
+                                        ),
                                   icon: Icon(
                                     _hidePassword
                                         ? Icons.visibility_outlined
@@ -198,9 +276,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ),
                                     )
                                     .toList(),
-                                onChanged: (value) =>
-                                    setState(() => _course = value),
+                                onChanged: _saving
+                                    ? null
+                                    : (value) =>
+                                          setState(() => _course = value),
                               ),
+                            if (_coursesError != null) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                _coursesError!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: _saving || _loadingCourses
+                                    ? null
+                                    : _loadCourses,
+                                icon: const Icon(Icons.refresh_rounded),
+                                label: const Text('Tentar carregar os cursos'),
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             Row(
                               children: [
@@ -213,7 +309,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                     items: [
                                       for (
                                         var semester = 1;
-                                        semester <= 12;
+                                        semester <= 20;
                                         semester++
                                       )
                                         DropdownMenuItem(
@@ -221,22 +317,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                           child: Text('$semesterº'),
                                         ),
                                     ],
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() => _semester = value);
-                                      }
-                                    },
+                                    onChanged: _saving
+                                        ? null
+                                        : (value) {
+                                            if (value != null) {
+                                              setState(() => _semester = value);
+                                            }
+                                          },
                                   ),
                                 ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: TextField(
                                     controller: _group,
+                                    maxLength: 60,
+                                    enabled: !_saving,
+                                    textInputAction: TextInputAction.done,
+                                    onSubmitted: (_) => _register(),
                                     textCapitalization:
                                         TextCapitalization.characters,
-                                    decoration: const InputDecoration(
+                                    decoration: InputDecoration(
                                       labelText: 'Turma',
                                       hintText: 'EC4A',
+                                      errorText: _groupError,
                                     ),
                                   ),
                                 ),
@@ -262,7 +365,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
-                                onPressed: _saving ? null : _register,
+                                onPressed: _saving || _loadingCourses
+                                    ? null
+                                    : _register,
                                 icon: _saving
                                     ? const SizedBox.square(
                                         dimension: 18,

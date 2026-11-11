@@ -105,16 +105,28 @@ class AppSession extends ChangeNotifier {
     required String group,
   }) async {
     final generation = ++_sessionGeneration;
-    final result = await _api
-        .register(
-          name: name,
-          email: email,
-          password: password,
-          course: course,
-          semester: semester,
-          group: group,
-        )
-        .timeout(authTimeout, onTimeout: _authTimedOut);
+    AuthResult result;
+    try {
+      result = await _api
+          .register(
+            name: name,
+            email: email,
+            password: password,
+            course: course,
+            semester: semester,
+            group: group,
+          )
+          .timeout(authTimeout, onTimeout: _authTimedOut);
+    } on ApiException catch (error) {
+      if (error.statusCode != 409) rethrow;
+      try {
+        result = await _api
+            .login(email: email, password: password)
+            .timeout(authTimeout, onTimeout: _authTimedOut);
+      } catch (_) {
+        throw error;
+      }
+    }
 
     _requireCurrent(generation);
     await _persistSession(
