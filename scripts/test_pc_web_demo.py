@@ -58,11 +58,11 @@ class _MockApiHandler(BaseHTTPRequestHandler):
 class PcWebDemoTest(unittest.TestCase):
     def test_resolve_upstream_url_preserves_prefix_and_query(self) -> None:
         resolved = pc_web_demo.resolve_upstream_url(
-            "https://granmap.168.119.244.43.sslip.io/api",
+            "https://granmap.example.org/api",
             "/api/maps/current?floor=1",
         )
         self.assertEqual(resolved.scheme, "https")
-        self.assertEqual(resolved.netloc, "granmap.168.119.244.43.sslip.io")
+        self.assertEqual(resolved.netloc, "granmap.example.org")
         self.assertEqual(resolved.path, "/api/maps/current")
         self.assertEqual(resolved.query, "floor=1")
 

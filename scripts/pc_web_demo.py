@@ -11,6 +11,7 @@ import shutil
 import ssl
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 import webbrowser
@@ -19,10 +20,11 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-DEFAULT_API_URL = "https://granmap.168.119.244.43.sslip.io/api"
+DEFAULT_API_URL = "http://127.0.0.1:8787/api"
 LOCAL_API_URL = "http://127.0.0.1:8100"
 REPO_ROOT = Path(__file__).resolve().parent.parent
 APP_DIR = REPO_ROOT / "app"
+BACKEND_DIR = REPO_ROOT / "backend"
 WEB_BUILD_DIR = APP_DIR / "build" / "web"
 
 HOP_BY_HOP_HEADERS = frozenset(
@@ -313,15 +315,74 @@ def open_demo_window(url: str, *, desktop: bool = False) -> None:
     webbrowser.open(url)
 
 
+def check_api_health(api_url: str) -> bool:
+    """Verifica rapidamente se a API informada responde /health."""
+    target = f"{api_url.rstrip('/')}/health"
+    try:
+        with urllib.request.urlopen(target, timeout=1.2) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
+def ensure_local_backend(
+    *, prefer_gateway: bool = True
+) -> tuple[str, subprocess.Popen[bytes] | None]:
+    """Usa granmap-pc (8787) se ativo; caso contrario sobe backend local (8100)."""
+    if prefer_gateway and check_api_health(DEFAULT_API_URL):
+        return DEFAULT_API_URL, None
+    if check_api_health(LOCAL_API_URL):
+        return LOCAL_API_URL, None
+
+    venv_python = BACKEND_DIR / ".venv" / "Scripts" / "python.exe"
+    python_exe = str(venv_python) if venv_python.is_file() else sys.executable
+    demo_db = BACKEND_DIR / "granmap_demo.db"
+    env = os.environ.copy()
+    env["GRANMAP_DB_PATH"] = str(demo_db)
+    if not demo_db.is_file():
+        subprocess.run(
+            [python_exe, str(BACKEND_DIR / "seed.py")],
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+        )
+
+    proc = subprocess.Popen(
+        [
+            python_exe,
+            "-m",
+            "uvicorn",
+            "main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8100",
+        ],
+        cwd=BACKEND_DIR,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    deadline = time.monotonic() + 15
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            raise RuntimeError("Backend local encerrou inesperadamente.")
+        if check_api_health(LOCAL_API_URL):
+            return LOCAL_API_URL, proc
+        time.sleep(0.25)
+    proc.terminate()
+    raise RuntimeError("Backend local nao respondeu a tempo na porta 8100.")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Abre o GranMap no PC para demonstração.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8088)
-    parser.add_argument("--api-url", default=DEFAULT_API_URL)
+    parser.add_argument("--api-url", default=None)
     parser.add_argument(
         "--local",
         action="store_true",
-        help="Conecta ao backend local http://127.0.0.1:8100 em vez da nuvem.",
+        help="Conecta diretamente ao backend Python local http://127.0.0.1:8100.",
     )
     parser.add_argument("--rebuild", action="store_true")
     parser.add_argument("--no-open", action="store_true")
@@ -332,7 +393,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    api_url = LOCAL_API_URL if args.local else args.api_url
+    if (
+        not args.rebuild
+        and not args.local
+        and not args.api_url
+        and not args.no_open
+        and check_api_health(DEFAULT_API_URL)
+    ):
+        gateway_url = "http://127.0.0.1:8787/"
+        print(f"GranMap PC ativo em {gateway_url}")
+        open_demo_window(gateway_url, desktop=args.desktop)
+        return 0
+
     register_mime_types()
     web_dir = ensure_web_build(rebuild=args.rebuild)
     demo_url = f"http://{args.host}:{args.port}/app/"
@@ -342,6 +414,12 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_open:
             open_demo_window(demo_url, desktop=args.desktop)
         return 0
+
+    backend_proc: subprocess.Popen[bytes] | None = None
+    if args.api_url:
+        api_url = args.api_url
+    else:
+        api_url, backend_proc = ensure_local_backend(prefer_gateway=not args.local)
 
     handler = partial(
         GranMapDemoHandler,
@@ -362,6 +440,12 @@ def main(argv: list[str] | None = None) -> int:
         print("\nEncerrando GranMap PC...")
     finally:
         server.server_close()
+        if backend_proc is not None and backend_proc.poll() is None:
+            backend_proc.terminate()
+            try:
+                backend_proc.wait(timeout=3)
+            except Exception:
+                backend_proc.kill()
     return 0
 
 
