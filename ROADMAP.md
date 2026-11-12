@@ -20,7 +20,7 @@
 2. GranMap Lab com sensores simulados/físicos, coleta magnética, logs e grafo.
 3. Digital Twin 3D conceitual usando o mesmo mapa X/Y/Z.
 4. Walk View em primeira pessoa e troca automática de piso.
-5. Campus Lens com câmera real opcional, AR demonstrativo e âncoras QR.
+5. Gran Lens com câmera real opcional, AR demonstrativo e âncoras QR.
 6. PDR, fusão, Map Matching e confiança com fonte real ou determinística.
 7. Admin completo, papéis e conflitos acadêmicos.
 8. Dados, reset e inicialização em um clique para a apresentação.
@@ -29,7 +29,7 @@ Essas oito frentes estão implementadas e validadas. As interfaces e os
 algoritmos e integrações físicas são funcionais. Geometria, métricas e precisão
 continuam identificadas como provisórias enquanto não houver calibração real.
 
-## Validação no campus
+## Validação na faculdade
 
 1. Conferir nomes, portas, lados do corredor e acessibilidade presencialmente.
 2. Fotografar ou desenhar pontos de decisão, sem registrar pessoas.

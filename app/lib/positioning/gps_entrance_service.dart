@@ -15,7 +15,7 @@ class GpsEntranceFix {
 }
 
 /// GPS é usado apenas como apoio próximo às entradas. A conversão GPS → X/Y/Z
-/// depende dos pontos georreferenciados obtidos no levantamento do campus.
+/// depende dos pontos georreferenciados obtidos no levantamento da faculdade.
 class GpsEntranceService {
   Future<GpsEntranceFix> currentFix() async {
     if (!await Geolocator.isLocationServiceEnabled()) {

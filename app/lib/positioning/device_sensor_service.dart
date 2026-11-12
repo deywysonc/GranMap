@@ -10,7 +10,7 @@ import 'sensor_snapshot.dart';
 ///
 /// A contagem de passos é deliberadamente conservadora: ela detecta picos no
 /// acelerômetro, aplica período refratário e deixa o MapMatcher limitar a deriva.
-/// Na implantação real os limiares devem ser calibrados com amostras do campus.
+/// Na implantação real os limiares devem ser calibrados com amostras da faculdade.
 class DeviceSensorService implements SensorService {
   DeviceSensorService({
     this.accelerationEvents,

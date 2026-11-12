@@ -12,7 +12,7 @@
     "distanceUnit": "conceptual_unit",
     "source": "HANDOFF_CODEX_GRANMAP + mapa conceitual v6 + quatro vídeos de referência de 2026-08-20",
     "surveyStatus": "upper_pdf_and_author_spatial_corrections_v12",
-    "importantNote": "Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: lanchonete à esquerda e rampa logo à direita, ambas de frente à quadra com acesso pelo sul e circulação compartilhada. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.",
+    "importantNote": "Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: na mesma altura vertical da sala Isaac Newton e coladas a ela ficam a Lanchonete maior embaixo e a Rampa menor acima, com portas voltadas para a faixa andável entre elas e a Quadra (ligada ao Corredor Gran abaixo); sem circulação ao norte da quadra e com o corredor leste alinhado à altura da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.",
     "mapMode": "architectural_floorplan_with_provisional_ground",
     "evidenceCaptureIds": [
       "capture_entrada_gran_180941",
@@ -46,7 +46,7 @@
       "floor": 0,
       "x": 24,
       "y": 66,
-      "width": 80,
+      "width": 79.5,
       "height": 8,
       "verification": "observed_video",
       "evidenceCaptureIds": [
@@ -228,7 +228,7 @@
       "floor": 0,
       "x": 4,
       "y": 24,
-      "width": 100,
+      "width": 99.5,
       "height": 8,
       "verification": "observed_video",
       "evidenceCaptureIds": [
@@ -242,7 +242,7 @@
       "floor": 0,
       "x": 4,
       "y": 32,
-      "width": 9.5,
+      "width": 15.5,
       "height": 14,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
@@ -252,7 +252,7 @@
       "name": "Alan Turing (Informática)",
       "type": "laboratory",
       "floor": 0,
-      "x": 13.5,
+      "x": 20.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -276,7 +276,7 @@
       "name": "Henry Ford",
       "type": "classroom",
       "floor": 0,
-      "x": 27.5,
+      "x": 34.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -300,7 +300,7 @@
       "name": "Sócrates",
       "type": "classroom",
       "floor": 0,
-      "x": 41.5,
+      "x": 48.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -324,7 +324,7 @@
       "name": "Peter Drucker",
       "type": "classroom",
       "floor": 0,
-      "x": 55.5,
+      "x": 62.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -348,7 +348,7 @@
       "name": "Carlos Drummond",
       "type": "classroom",
       "floor": 0,
-      "x": 69.5,
+      "x": 76.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -372,7 +372,7 @@
       "name": "Maria Lacerda",
       "type": "classroom",
       "floor": 0,
-      "x": 83.5,
+      "x": 90.5,
       "y": 32,
       "width": 13,
       "height": 14,
@@ -392,27 +392,27 @@
       "evidenceCaptureIds": []
     },
     {
-      "id": "zone_ground_court_west",
+      "id": "zone_ground_court_west_gran",
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 106,
-      "y": 18,
-      "width": 7,
-      "height": 56,
+      "x": 103.5,
+      "y": 16,
+      "width": 13.5,
+      "height": 58,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
     {
-      "id": "zone_ground_court_north",
-      "name": "Frente compartilhada da quadra, lanchonete e rampa",
+      "id": "zone_ground_court_west",
+      "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 104,
-      "y": 64,
-      "width": 41,
-      "height": 13,
-      "verification": "user_reported_approximate",
+      "x": 117,
+      "y": 16,
+      "width": 5.5,
+      "height": 76,
+      "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
     {
@@ -420,10 +420,10 @@
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 113,
-      "y": 18,
-      "width": 32,
-      "height": 5,
+      "x": 122.5,
+      "y": 16,
+      "width": 24.5,
+      "height": 7,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -432,10 +432,10 @@
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 138,
-      "y": 23,
-      "width": 7,
-      "height": 44,
+      "x": 147,
+      "y": 16,
+      "width": 7.5,
+      "height": 76,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -444,10 +444,10 @@
       "name": "Quadra",
       "type": "court",
       "floor": 0,
-      "x": 115,
+      "x": 124,
       "y": 24,
       "width": 22,
-      "height": 40,
+      "height": 68,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -456,10 +456,10 @@
       "name": "Lanchonete",
       "type": "cafeteria",
       "floor": 0,
-      "x": 115,
-      "y": 77,
-      "width": 10,
-      "height": 15,
+      "x": 103.5,
+      "y": 74,
+      "width": 13,
+      "height": 11,
       "verification": "user_reported_approximate",
       "evidenceCaptureIds": []
     },
@@ -468,10 +468,10 @@
       "name": "Rampa · subir",
       "type": "ramp",
       "floor": 0,
-      "x": 126,
-      "y": 77,
-      "width": 11,
-      "height": 15,
+      "x": 103.5,
+      "y": 86,
+      "width": 13,
+      "height": 6,
       "verification": "user_reported_approximate",
       "evidenceCaptureIds": [
         "capture_rampa_subida_181233"
@@ -482,7 +482,7 @@
       "name": "Biblioteca",
       "type": "library",
       "floor": 0,
-      "x": 145,
+      "x": 154.5,
       "y": 52,
       "width": 14,
       "height": 13,
@@ -494,7 +494,7 @@
       "name": "Financeiro",
       "type": "finance",
       "floor": 0,
-      "x": 145,
+      "x": 154.5,
       "y": 37,
       "width": 14,
       "height": 13,
@@ -506,7 +506,7 @@
       "name": "Banheiros",
       "type": "restroom",
       "floor": 0,
-      "x": 145,
+      "x": 154.5,
       "y": 22,
       "width": 14,
       "height": 13,
@@ -932,7 +932,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_secretaria_door",
-      "displayX": 8.75,
+      "displayX": 11.75,
       "displayY": 39,
       "verification": "user_confirmed",
       "evidenceCaptureIds": [
@@ -949,7 +949,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_0",
-      "displayX": 20,
+      "displayX": 27,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -979,7 +979,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_2",
-      "displayX": 34,
+      "displayX": 41,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1009,7 +1009,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_4",
-      "displayX": 48,
+      "displayX": 55,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1039,7 +1039,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_6",
-      "displayX": 62,
+      "displayX": 69,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1069,7 +1069,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_8",
-      "displayX": 76,
+      "displayX": 83,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1099,7 +1099,7 @@
       "y": 18,
       "z": 0,
       "navigationNode": "ground_c2_door_10",
-      "displayX": 90,
+      "displayX": 97,
       "displayY": 39,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1123,14 +1123,14 @@
       "id": "lanchonete",
       "name": "Lanchonete",
       "type": "cafeteria",
-      "sector": "De frente à quadra · fim do Corredor Gran",
+      "sector": "De frente para a área de circulação · próximo ao Corredor Gran",
       "floor": 0,
       "x": 96,
       "y": 39,
       "z": 0,
       "navigationNode": "ground_snack_bar",
-      "displayX": 120,
-      "displayY": 78,
+      "displayX": 112,
+      "displayY": 79.5,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -1144,8 +1144,8 @@
       "y": 23,
       "z": 0,
       "navigationNode": "ground_court_west_mid",
-      "displayX": 126,
-      "displayY": 44,
+      "displayX": 135,
+      "displayY": 58,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -1159,7 +1159,7 @@
       "y": 30,
       "z": 0,
       "navigationNode": "ground_services_north",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 59,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1174,7 +1174,7 @@
       "y": 23,
       "z": 0,
       "navigationNode": "ground_services_mid",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 44,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1189,7 +1189,7 @@
       "y": 16,
       "z": 0,
       "navigationNode": "ground_services_south",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 28.5,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1632,7 +1632,7 @@
       "y": 34,
       "z": 0,
       "type": "opening",
-      "displayX": 104,
+      "displayX": 103.5,
       "displayY": 70
     },
     {
@@ -1652,7 +1652,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 8.75,
+      "displayX": 11.75,
       "displayY": 39
     },
     {
@@ -1662,7 +1662,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 20,
+      "displayX": 27,
       "displayY": 28
     },
     {
@@ -1682,7 +1682,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 34,
+      "displayX": 41,
       "displayY": 28
     },
     {
@@ -1702,7 +1702,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 48,
+      "displayX": 55,
       "displayY": 28
     },
     {
@@ -1722,7 +1722,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 62,
+      "displayX": 69,
       "displayY": 28
     },
     {
@@ -1742,7 +1742,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 76,
+      "displayX": 83,
       "displayY": 28
     },
     {
@@ -1762,7 +1762,7 @@
       "y": 12,
       "z": 0,
       "type": "corridor",
-      "displayX": 90,
+      "displayX": 97,
       "displayY": 28
     },
     {
@@ -1782,7 +1782,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 20,
+      "displayX": 27,
       "displayY": 39
     },
     {
@@ -1802,7 +1802,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 34,
+      "displayX": 41,
       "displayY": 39
     },
     {
@@ -1822,7 +1822,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 48,
+      "displayX": 55,
       "displayY": 39
     },
     {
@@ -1842,7 +1842,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 62,
+      "displayX": 69,
       "displayY": 39
     },
     {
@@ -1862,7 +1862,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 76,
+      "displayX": 83,
       "displayY": 39
     },
     {
@@ -1882,7 +1882,7 @@
       "y": 18,
       "z": 0,
       "type": "door",
-      "displayX": 90,
+      "displayX": 97,
       "displayY": 39
     },
     {
@@ -1902,7 +1902,7 @@
       "y": 12,
       "z": 0,
       "type": "opening",
-      "displayX": 104,
+      "displayX": 103.5,
       "displayY": 28
     },
     {
@@ -1912,7 +1912,7 @@
       "y": 32,
       "z": 0,
       "type": "open_area",
-      "displayX": 110,
+      "displayX": 119.75,
       "displayY": 70
     },
     {
@@ -1922,7 +1922,7 @@
       "y": 23,
       "z": 0,
       "type": "open_area",
-      "displayX": 110,
+      "displayX": 119.75,
       "displayY": 44
     },
     {
@@ -1932,8 +1932,8 @@
       "y": 14,
       "z": 0,
       "type": "open_area",
-      "displayX": 110,
-      "displayY": 20
+      "displayX": 119.75,
+      "displayY": 19.5
     },
     {
       "id": "ground_court_east_north",
@@ -1942,8 +1942,8 @@
       "y": 32,
       "z": 0,
       "type": "open_area",
-      "displayX": 141,
-      "displayY": 70
+      "displayX": 150.75,
+      "displayY": 63
     },
     {
       "id": "ground_court_east_south",
@@ -1952,8 +1952,8 @@
       "y": 14,
       "z": 0,
       "type": "open_area",
-      "displayX": 141,
-      "displayY": 20
+      "displayX": 150.75,
+      "displayY": 19.5
     },
     {
       "id": "ground_snack_bar",
@@ -1962,8 +1962,8 @@
       "y": 39,
       "z": 0,
       "type": "service",
-      "displayX": 120,
-      "displayY": 78
+      "displayX": 112,
+      "displayY": 79.5
     },
     {
       "id": "ground_services_north",
@@ -1972,7 +1972,7 @@
       "y": 30,
       "z": 0,
       "type": "service",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 59
     },
     {
@@ -1982,7 +1982,7 @@
       "y": 23,
       "z": 0,
       "type": "service",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 44
     },
     {
@@ -1992,7 +1992,7 @@
       "y": 16,
       "z": 0,
       "type": "service",
-      "displayX": 147,
+      "displayX": 156.5,
       "displayY": 28.5
     },
     {
@@ -2002,8 +2002,8 @@
       "y": 8,
       "z": 0,
       "type": "ramp",
-      "displayX": 131.5,
-      "displayY": 78
+      "displayX": 114.5,
+      "displayY": 89
     },
     {
       "id": "ground_ramp_run_1",
@@ -2012,8 +2012,8 @@
       "y": 8,
       "z": 0.25,
       "type": "ramp",
-      "displayX": 131.5,
-      "displayY": 83
+      "displayX": 110.5,
+      "displayY": 89
     },
     {
       "id": "ground_ramp_landing_mid",
@@ -2022,8 +2022,8 @@
       "y": 14,
       "z": 0.45,
       "type": "ramp",
-      "displayX": 131.5,
-      "displayY": 88
+      "displayX": 106.5,
+      "displayY": 89
     },
     {
       "id": "upper_gate",
@@ -2372,8 +2372,8 @@
       "y": 34,
       "z": 0,
       "type": "corridor",
-      "displayX": 131.5,
-      "displayY": 70
+      "displayX": 119.75,
+      "displayY": 89
     },
     {
       "id": "ground_snack_front",
@@ -2382,8 +2382,8 @@
       "y": 34,
       "z": 0,
       "type": "open_area",
-      "displayX": 120,
-      "displayY": 70
+      "displayX": 119.75,
+      "displayY": 79.5
     },
     {
       "id": "ground_services_north_approach",
@@ -2392,7 +2392,7 @@
       "y": 30,
       "z": 0,
       "type": "corridor",
-      "displayX": 141,
+      "displayX": 150.75,
       "displayY": 59
     },
     {
@@ -2402,7 +2402,7 @@
       "y": 23,
       "z": 0,
       "type": "corridor",
-      "displayX": 141,
+      "displayX": 150.75,
       "displayY": 44
     },
     {
@@ -2412,7 +2412,7 @@
       "y": 16,
       "z": 0,
       "type": "corridor",
-      "displayX": 141,
+      "displayX": 150.75,
       "displayY": 28.5
     },
     {
@@ -2967,15 +2967,6 @@
       "evidenceCaptureIds": []
     },
     {
-      "from": "ground_court_west_north",
-      "to": "ground_court_east_north",
-      "distance": 20,
-      "type": "open_area",
-      "accessible": true,
-      "verification": "user_confirmed",
-      "evidenceCaptureIds": []
-    },
-    {
       "from": "ground_court_west_south",
       "to": "ground_court_east_south",
       "distance": 20,
@@ -3041,15 +3032,6 @@
       "evidenceCaptureIds": [
         "capture_rampa_subida_181233"
       ]
-    },
-    {
-      "from": "ground_c1_end",
-      "to": "ground_snack_bar",
-      "distance": 7.5,
-      "type": "service_access",
-      "accessible": true,
-      "verification": "user_confirmed",
-      "evidenceCaptureIds": []
     },
     {
       "from": "upper_gate",
@@ -3328,10 +3310,19 @@
       "evidenceCaptureIds": []
     },
     {
-      "from": "ground_c1_end",
+      "from": "ground_court_west_north",
+      "to": "ground_snack_front",
+      "distance": 9.5,
+      "type": "open_area",
+      "accessible": true,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
+      "from": "ground_snack_front",
       "to": "ground_ramp_access_corner",
-      "distance": 34,
-      "type": "ramp_access",
+      "distance": 9.5,
+      "type": "open_area",
       "accessible": true,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
@@ -3339,28 +3330,19 @@
     {
       "from": "ground_ramp_access_corner",
       "to": "ground_spiral_ramp_landing",
-      "distance": 26,
+      "distance": 5,
       "type": "ramp_access",
       "accessible": true,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
     {
-      "from": "ground_court_west_north",
-      "to": "ground_snack_front",
-      "distance": 10,
-      "type": "open_area",
-      "accessible": false,
-      "verification": "access_unverified",
-      "evidenceCaptureIds": []
-    },
-    {
       "from": "ground_snack_front",
-      "to": "ground_ramp_access_corner",
-      "distance": 11.5,
-      "type": "open_area",
-      "accessible": false,
-      "verification": "access_unverified",
+      "to": "ground_snack_bar",
+      "distance": 8,
+      "type": "service_access",
+      "accessible": true,
+      "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
     {
