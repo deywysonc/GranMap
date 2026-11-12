@@ -11,7 +11,7 @@ Object.assign(map.metadata, {
   geometryStatus: 'floorplan_relative',
   mapMode: 'architectural_floorplan_with_provisional_ground',
   surveyStatus: 'upper_pdf_and_author_spatial_corrections_v12',
-  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: faixa andável oeste colada à sala Isaac Newton ligando ao Corredor Gran; na mesma altura da sala (sem invadir o Corredor Gran nem haver circulação ao norte da quadra) ficam a Lanchonete maior embaixo e a Rampa menor acima dela, ambas voltadas para oeste e com a Quadra logo à direita. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
+  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: na mesma altura vertical da sala Isaac Newton e coladas a ela ficam a Lanchonete maior embaixo e a Rampa menor acima, com portas voltadas para a faixa andável entre elas e a Quadra (ligada ao Corredor Gran abaixo); sem circulação ao norte da quadra e com o corredor leste alinhado à altura da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
 });
 map.floors[0].name = 'Térreo';
 map.floors[1].name = 'Piso superior';
@@ -106,33 +106,34 @@ for (let i = 0; i < tytoIds.length; i++) {
   zone(`zone_ground_${poi.id}`, poi.name, poi.type, 0, cx - 6.5, i % 2 === 0 ? 32 : 10, 13, 14);
 }
 
-// Walkable west strip flush with Isaac Newton / Corredor Gran leading to the
-// court flanks; cafeteria (larger) and ramp access (smaller) share Isaac Newton's y-span.
-zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 103.5, 16, 5.5, 76, 'user_confirmed');
-zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 109, 16, 46, 7, 'user_confirmed');
-zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 147.5, 23, 7.5, 44, 'user_confirmed');
+// Cafeteria (larger) and ramp access (smaller) share Isaac Newton's wall and height;
+// the walkable corridor sits on their right (in front of the court), and the east
+// court corridor rises to the full height of the court.
+zone('zone_ground_court_west_gran', 'Circulação', 'open_area', 0, 103.5, 16, 13.5, 58, 'user_confirmed');
+zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 117, 16, 5.5, 76, 'user_confirmed');
+zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 122.5, 16, 24.5, 7, 'user_confirmed');
+zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 147, 16, 7.5, 76, 'user_confirmed');
 zone('zone_ground_court', 'Quadra', 'court', 0, 124, 24, 22, 68, 'user_confirmed');
-zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 109.5, 74, 13, 11, 'user_reported_approximate');
-zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 109.5, 86, 13, 6, 'user_reported_approximate');
-pois.get('lanchonete').sector = 'Lateral da quadra · fim do Corredor Gran';
+zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 103.5, 74, 13, 11, 'user_reported_approximate');
+zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 103.5, 86, 13, 6, 'user_reported_approximate');
+pois.get('lanchonete').sector = 'De frente para a área de circulação · próximo ao Corredor Gran';
 for (const [id, x, y] of [
   ['ground_c1_end', 103.5, 70], ['ground_c2_end', 103.5, 28],
-  ['ground_court_west_north', 106.25, 70], ['ground_court_west_mid', 106.25, 44],
-  ['ground_court_west_south', 106.25, 19.5], ['ground_court_east_north', 151.25, 63],
-  ['ground_court_east_south', 151.25, 19.5], ['ground_snack_bar', 114, 79.5],
-  ['ground_spiral_ramp_landing', 111.5, 89], ['ground_ramp_run_1', 115.5, 89],
-  ['ground_ramp_landing_mid', 119.5, 89],
+  ['ground_court_west_north', 119.75, 70], ['ground_court_west_mid', 119.75, 44],
+  ['ground_court_west_south', 119.75, 19.5], ['ground_court_east_north', 150.75, 63],
+  ['ground_court_east_south', 150.75, 19.5], ['ground_snack_bar', 112, 79.5],
+  ['ground_spiral_ramp_landing', 114.5, 89], ['ground_ramp_run_1', 110.5, 89],
+  ['ground_ramp_landing_mid', 106.5, 89],
 ]) display(id, x, y);
-node('ground_ramp_access_corner', 0, 124, 34, 106.25, 89);
-node('ground_snack_front', 0, 96, 34, 106.25, 79.5, 'open_area');
+node('ground_ramp_access_corner', 0, 124, 34, 119.75, 89);
+node('ground_snack_front', 0, 96, 34, 119.75, 79.5, 'open_area');
 map.edges = map.edges.filter(item =>
   !(item.from === 'ground_c1_end' && item.to === 'ground_spiral_ramp_landing') &&
   !(item.from === 'ground_c1_end' && item.to === 'ground_snack_bar') &&
   !(item.from === 'ground_court_west_north' && item.to === 'ground_court_east_north'));
-edge('ground_c1_end', 'ground_ramp_access_corner', 34, 'ramp_access', 'user_confirmed');
-edge('ground_ramp_access_corner', 'ground_spiral_ramp_landing', 5, 'ramp_access', 'user_confirmed');
 edge('ground_court_west_north', 'ground_snack_front', 9.5, 'open_area', 'user_confirmed');
 edge('ground_snack_front', 'ground_ramp_access_corner', 9.5, 'open_area', 'user_confirmed');
+edge('ground_ramp_access_corner', 'ground_spiral_ramp_landing', 5, 'ramp_access', 'user_confirmed');
 edge('ground_snack_front', 'ground_snack_bar', 8, 'service_access', 'user_confirmed');
 // Preserve the cafeteria anchor as a single-entry leaf node so routes to the
 // upper ramp never cut through its interior.
@@ -144,9 +145,9 @@ const services = [
 ];
 for (const [poiId, id, bottom, cy, navY] of services) {
   const poi = pois.get(poiId);
-  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 155, bottom, 14, 13, 'user_confirmed');
-  display(id, 157, cy);
-  node(`${id}_approach`, 0, 122, navY, 151.25, cy);
+  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 154.5, bottom, 14, 13, 'user_confirmed');
+  display(id, 156.5, cy);
+  node(`${id}_approach`, 0, 122, navY, 150.75, cy);
   edge(`${id}_approach`, id, 2, 'door', 'user_confirmed');
 }
 map.edges = map.edges.map(item => {

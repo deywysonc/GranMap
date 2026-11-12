@@ -62,7 +62,7 @@ void main() {
         containsAll([
           'upper_gallery_turn__upper_gallery_step',
           'ground_services_north_approach__ground_services_mid_approach',
-          'ground_c1_end__ground_ramp_access_corner',
+          'ground_ramp_access_corner__ground_spiral_ramp_landing',
         ]),
       );
       expect(result.warning, isNull);

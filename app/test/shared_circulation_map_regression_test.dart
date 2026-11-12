@@ -105,11 +105,12 @@ void main() {
     }
   });
 
-  test('faixa andável cola na Isaac Newton e lanchonete/rampa ficam na altura da sala', () {
+  test('lanchonete e rampa colam na Isaac Newton com circulação à direita e leste na altura da quadra', () {
     CampusZone zone(String id) => campus.zones.singleWhere((z) => z.id == id);
     final court = zone('zone_ground_court');
     final west = zone('zone_ground_court_west');
     final south = zone('zone_ground_court_south');
+    final east = zone('zone_ground_court_east');
     final snack = zone('zone_ground_snack');
     final ramp = zone('zone_ground_upper_access');
     final isaac = zone('zone_ground_isaac_newton');
@@ -119,20 +120,25 @@ void main() {
     );
     expect(west.type, 'open_area');
     expect(south.type, 'open_area');
-    expect(west.x - (isaac.x + isaac.width), lessThanOrEqualTo(.5));
-    expect(west.x + west.width, lessThanOrEqualTo(snack.x));
+    expect(east.type, 'open_area');
+    expect(snack.x - (isaac.x + isaac.width), lessThanOrEqualTo(.5));
+    expect(snack.x + snack.width, lessThanOrEqualTo(west.x));
+    expect(west.x + west.width, lessThan(court.x));
     expect(south.y + south.height, lessThan(court.y));
     expect(snack.y, isaac.y);
     expect(snack.height, greaterThan(ramp.height));
     expect(ramp.y + ramp.height, isaac.y + isaac.height);
     expect(court.y + court.height, ramp.y + ramp.height);
+    expect(east.y + east.height, court.y + court.height);
     expect(ramp.y, greaterThanOrEqualTo(snack.y + snack.height));
     expect(snack.x, ramp.x);
-    expect(snack.x + snack.width, lessThan(court.x));
-    expect(campus.nodeById('ground_snack_front')!.displayX, lessThan(snack.x));
+    expect(
+      campus.nodeById('ground_snack_front')!.displayX,
+      greaterThan(snack.x + snack.width),
+    );
     expect(
       campus.nodeById('ground_ramp_access_corner')!.displayX,
-      lessThan(ramp.x),
+      greaterThan(ramp.x + ramp.width),
     );
   });
 }

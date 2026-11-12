@@ -249,7 +249,7 @@ class CampusMapRepository {
     final ids = _closureIds(closures);
     const replacements = {
       'ground_c1_end__ground_spiral_ramp_landing': [
-        'ground_c1_end__ground_ramp_access_corner',
+        'ground_snack_front__ground_ramp_access_corner',
         'ground_ramp_access_corner__ground_spiral_ramp_landing',
       ],
       'upper_spine_5__upper_spine_6': [

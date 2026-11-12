@@ -151,7 +151,7 @@ def ensure_initial_map() -> None:
                 # A closed old segment must remain closed after it is split into
                 # a corner or moved onto the circulation outside the court.
                 replacements = {
-                    "ground_c1_end__ground_spiral_ramp_landing": "ground_c1_end__ground_ramp_access_corner",
+                    "ground_c1_end__ground_spiral_ramp_landing": "ground_ramp_access_corner__ground_spiral_ramp_landing",
                     "upper_spine_5__upper_spine_6": "upper_gallery_turn__upper_gallery_step",
                     "upper_service_spine__upper_bwc_masc": "upper_bwc_passage__upper_bwc_masc",
                     "ground_court_east_north__ground_services_north": "ground_court_east_north__ground_services_north_approach",
