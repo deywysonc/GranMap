@@ -95,15 +95,20 @@ for (const [from, to, distance] of [
   ['ground_labs_quimica_ramp_approach', 'ground_labs_quimica_rampa', 4],
 ]) edge(from, to, distance, 'provisional_access', 'access_unverified', false);
 
-// Parallel Tyto corridor; rooms alternate on both sides, Secretaria by entry.
+// Parallel Tyto corridor; top and bottom rooms align in parallel columns, with
+// a wider Secretaria beside the entry.
 zone('zone_ground_c2', 'Corredor Tyto · Secretaria', 'corridor_tyto', 0, 4, 24, 99.5, 8, 'observed_video');
-zone('zone_ground_secretaria', 'Secretaria', 'administration', 0, 4, 32, 9.5, 14, 'user_confirmed');
-display('ground_secretaria_door', 8.75, 39);
+zone('zone_ground_secretaria', 'Secretaria', 'administration', 0, 4, 32, 15.5, 14, 'user_confirmed');
+display('ground_secretaria_door', 11.75, 39);
 const tytoIds = ['alan_turing', 'cora_coralina', 'henry_ford', 'albert_einstein', 'socrates', 'karl_marx', 'peter_drucker', 'paulo_freire', 'carlos_drummond', 'zilda_arns', 'maria_lacerda', 'rachel_de_queiroz'];
 for (let i = 0; i < tytoIds.length; i++) {
   const poi = pois.get(tytoIds[i]);
-  const cx = 20 + i * 7;
-  zone(`zone_ground_${poi.id}`, poi.name, poi.type, 0, cx - 6.5, i % 2 === 0 ? 32 : 10, 13, 14);
+  const col = Math.floor(i / 2);
+  const north = i % 2 === 0;
+  const cx = 27 + col * 14;
+  zone(`zone_ground_${poi.id}`, poi.name, poi.type, 0, cx - 6.5, north ? 32 : 10, 13, 14);
+  display(`ground_c2_spine_${i}`, cx, 28);
+  display(`ground_c2_door_${i}`, cx, north ? 39 : 17);
 }
 
 // Cafeteria (larger) and ramp access (smaller) share Isaac Newton's wall and height;

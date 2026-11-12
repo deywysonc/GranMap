@@ -141,6 +141,35 @@ void main() {
       greaterThan(ramp.x + ramp.width),
     );
   });
+
+  test('salas do corredor Tyto ficam paralelas e Secretaria maior junto à entrada', () {
+    CampusZone zone(String id) => campus.zones.singleWhere((z) => z.id == id);
+    final secretaria = zone('zone_ground_secretaria');
+    final alan = zone('zone_ground_alan_turing');
+    expect(secretaria.width, greaterThan(alan.width));
+    expect(secretaria.x + secretaria.width, lessThanOrEqualTo(alan.x));
+
+    const pairs = [
+      ('zone_ground_alan_turing', 'zone_ground_cora_coralina', 'ground_c2_door_0', 'ground_c2_door_1'),
+      ('zone_ground_henry_ford', 'zone_ground_albert_einstein', 'ground_c2_door_2', 'ground_c2_door_3'),
+      ('zone_ground_socrates', 'zone_ground_karl_marx', 'ground_c2_door_4', 'ground_c2_door_5'),
+      ('zone_ground_peter_drucker', 'zone_ground_paulo_freire', 'ground_c2_door_6', 'ground_c2_door_7'),
+      ('zone_ground_carlos_drummond', 'zone_ground_zilda_arns', 'ground_c2_door_8', 'ground_c2_door_9'),
+      ('zone_ground_maria_lacerda', 'zone_ground_rachel_de_queiroz', 'ground_c2_door_10', 'ground_c2_door_11'),
+    ];
+    for (final (northId, southId, northDoor, southDoor) in pairs) {
+      final north = zone(northId);
+      final south = zone(southId);
+      expect(north.x, south.x, reason: northId);
+      expect(north.width, south.width, reason: northId);
+      expect(north.y, greaterThan(south.y + south.height), reason: northId);
+      expect(
+        campus.nodeById(northDoor)!.displayX,
+        campus.nodeById(southDoor)!.displayX,
+        reason: northId,
+      );
+    }
+  });
 }
 
 Rect _rect(CampusZone zone) =>
