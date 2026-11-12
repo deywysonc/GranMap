@@ -51,8 +51,14 @@ $accessHost = if ($Lan) { Get-LanIPv4 } else { '127.0.0.1' }
 $apiUrl = "http://${accessHost}:8100"
 $adminUrl = "http://${accessHost}:5174"
 $appUrl = "http://${accessHost}:8088"
-$apkName = 'GranMap-demo-v1.6.1-arm64.apk'
-$apkPath = Join-Path $distRoot $apkName
+$deliverablesRoot = Join-Path $repoRoot 'deliverables'
+$apkName = 'GranMap.apk'
+$apkPath = Join-Path $deliverablesRoot $apkName
+if (-not (Test-Path -LiteralPath $apkPath)) {
+    $apkName = 'GranMap-demo-v1.6.1-arm64.apk'
+    $apkPath = Join-Path $distRoot $apkName
+}
+$apkDir = Split-Path -Parent $apkPath
 $apkUrl = "http://${accessHost}:8090/$apkName"
 
 if (-not (Test-Path -LiteralPath $python)) {
@@ -136,25 +142,44 @@ if (-not (Test-LocalPort -Port 5174)) {
     $started += [pscustomobject]@{ name = 'admin'; pid = $adminProcess.Id }
 }
 
+$pcDemoScript = Join-Path $PSScriptRoot 'pc_web_demo.py'
+$webBuildIndex = Join-Path $appRoot 'build\web\index.html'
+
 if (-not (Test-LocalPort -Port 8088)) {
-    $appProcess = Start-Process `
-        -FilePath $flutter `
-        -ArgumentList @(
-            'run', '-d', 'web-server',
-            '--web-hostname', $bindHost,
-            '--web-port', '8088',
-            "--dart-define=GRANMAP_API_URL=$apiUrl"
-        ) `
-        -WorkingDirectory $appRoot `
-        -WindowStyle Hidden `
-        -PassThru
+    if ((Test-Path -LiteralPath $pcDemoScript) -and (Test-Path -LiteralPath $webBuildIndex)) {
+        $appProcess = Start-Process `
+            -FilePath $python `
+            -ArgumentList @(
+                $pcDemoScript,
+                '--host', $bindHost,
+                '--port', '8088',
+                '--api-url', $apiUrl,
+                '--no-open'
+            ) `
+            -WorkingDirectory $repoRoot `
+            -WindowStyle Hidden `
+            -PassThru
+    }
+    else {
+        $appProcess = Start-Process `
+            -FilePath $flutter `
+            -ArgumentList @(
+                'run', '-d', 'web-server',
+                '--web-hostname', $bindHost,
+                '--web-port', '8088',
+                "--dart-define=GRANMAP_API_URL=$apiUrl"
+            ) `
+            -WorkingDirectory $appRoot `
+            -WindowStyle Hidden `
+            -PassThru
+    }
     $started += [pscustomobject]@{ name = 'app'; pid = $appProcess.Id }
 }
 
 if ($Lan -and (Test-Path -LiteralPath $apkPath) -and -not (Test-LocalPort -Port 8090)) {
     $downloadProcess = Start-Process `
         -FilePath $python `
-        -ArgumentList @('-m', 'http.server', '8090', '--bind', $bindHost, '--directory', $distRoot) `
+        -ArgumentList @('-m', 'http.server', '8090', '--bind', $bindHost, '--directory', $apkDir) `
         -WorkingDirectory $repoRoot `
         -WindowStyle Hidden `
         -PassThru
