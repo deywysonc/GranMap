@@ -300,7 +300,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 children: [
                   GranMapFadeSlide(
                     child: GranMapPageHeader(
-                      eyebrow: 'MURAL DO CAMPUS',
+                      eyebrow: 'MURAL DA FACULDADE',
                       title: 'Comunidade',
                       subtitle: 'Avisos de mudança de sala entre alunos',
                       trailing: FilledButton.icon(

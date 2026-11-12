@@ -91,7 +91,7 @@ class _AnchorScannerSheetState extends State<AnchorScannerSheet> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Aponte a câmera para uma placa QR do GranMap para confirmar em qual local do campus você está.',
+                'Aponte a câmera para uma placa QR do GranMap para confirmar em qual local da faculdade você está.',
                 textAlign: TextAlign.center,
               ),
             ),

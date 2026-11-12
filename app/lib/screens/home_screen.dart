@@ -521,7 +521,7 @@ class _LocationStatus extends StatelessWidget {
   _LocationAppearance _appearance() => switch (presence.status) {
     GranPresenceStatus.inside => const _LocationAppearance(
       title: 'Você está na Gran Tietê',
-      subtitle: 'Pronto para guiar você pelo campus.',
+      subtitle: 'Pronto para guiar você pela faculdade.',
       icon: Icons.location_on_rounded,
       tone: GranMapColors.mint,
     ),
@@ -541,7 +541,7 @@ class _LocationStatus extends StatelessWidget {
     ),
     GranPresenceStatus.permissionDenied => const _LocationAppearance(
       title: 'Localização sem permissão',
-      subtitle: 'Ative a localização para identificar sua chegada ao campus.',
+      subtitle: 'Ative a localização para identificar sua chegada à faculdade.',
       actionLabel: 'ATIVAR',
       icon: Icons.location_disabled_rounded,
       tone: GranMapColors.amber,

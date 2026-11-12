@@ -1449,10 +1449,10 @@ function MapOperationPage({
         <div className="card">
           <small>INTERDIÇÕES ATIVAS</small>
           <div className="metric">{activeClosures.length}</div>
-          <small>{activeClosures.length === 0 ? 'Circulação normal no campus' : 'O app está desviando destes trechos'}</small>
+          <small>{activeClosures.length === 0 ? 'Circulação normal na faculdade' : 'O app está desviando destes trechos'}</small>
         </div>
         <div className="card">
-          <small>PONTOS QR NO CAMPUS</small>
+          <small>PONTOS QR NA FACULDADE</small>
           <div className="metric">{anchors.length}</div>
           <small>Placas ativas para leitura no app</small>
         </div>
@@ -1732,7 +1732,7 @@ function MapOperationPage({
           <div className="card table-wrap">
             <div className="section-heading">
               <div>
-                <h2>Interdições no campus</h2>
+                <h2>Interdições na faculdade</h2>
                 <small>Controle o que está bloqueado agora e o histórico já reaberto.</small>
               </div>
               <div className="filter-pills">

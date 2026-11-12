@@ -574,7 +574,7 @@ class _RouteScreenState extends State<RouteScreen> with WidgetsBindingObserver {
           icon: const Icon(Icons.close_rounded),
         ),
         title: Text(
-          _physicalMode ? 'Acompanhando passos' : 'Rota no campus',
+          _physicalMode ? 'Acompanhando passos' : 'Rota na faculdade',
         ),
         actions: [
           Container(
