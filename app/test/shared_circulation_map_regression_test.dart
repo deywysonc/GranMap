@@ -40,7 +40,7 @@ void main() {
       (edge) =>
           edge.type == 'open_area' && edge.verification == 'access_unverified',
     );
-    expect(newEdges, hasLength(17));
+    expect(newEdges, hasLength(16));
     for (final edge in newEdges) {
       expect(edge.accessible, isFalse);
       expect(edge.verification, 'access_unverified');
@@ -105,23 +105,28 @@ void main() {
     }
   });
 
-  test('fachadas da lanchonete e rampa se voltam à mesma frente da quadra', () {
+  test('fachadas da lanchonete e rampa se voltam para oeste ao lado da quadra', () {
     CampusZone zone(String id) => campus.zones.singleWhere((z) => z.id == id);
     final court = zone('zone_ground_court');
-    final front = zone('zone_ground_court_north');
+    final west = zone('zone_ground_court_west');
+    final south = zone('zone_ground_court_south');
     final snack = zone('zone_ground_snack');
     final ramp = zone('zone_ground_upper_access');
-    expect(front.type, 'open_area');
-    expect(front.y, court.y + court.height);
-    expect(snack.y, front.y + front.height);
-    expect(ramp.y, snack.y);
-    expect(snack.x, court.x);
-    expect(ramp.x + ramp.width, court.x + court.width);
-    expect(snack.x + snack.width, lessThan(ramp.x));
-    expect(campus.nodeById('ground_snack_front')!.displayY, lessThan(snack.y));
     expect(
-      campus.nodeById('ground_ramp_access_corner')!.displayY,
-      lessThan(ramp.y),
+      campus.zones.any((z) => z.id == 'zone_ground_court_north'),
+      isFalse,
+    );
+    expect(west.type, 'open_area');
+    expect(south.type, 'open_area');
+    expect(south.y + south.height, lessThan(court.y));
+    expect(court.y + court.height, snack.y + snack.height);
+    expect(snack.x, ramp.x);
+    expect(west.x + west.width, lessThan(snack.x));
+    expect(snack.x + snack.width, lessThan(court.x));
+    expect(campus.nodeById('ground_snack_front')!.displayX, lessThan(snack.x));
+    expect(
+      campus.nodeById('ground_ramp_access_corner')!.displayX,
+      lessThan(ramp.x),
     );
   });
 }

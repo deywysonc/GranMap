@@ -137,9 +137,10 @@ void main() {
       final upperAccess = campus.nodeById('ground_spiral_ramp_landing')!;
 
       expect(snack.displayX, greaterThan(corridorEnd.displayX));
-      expect(upperAccess.displayX, greaterThan(snack.displayX));
-      expect(upperAccess.displayY, closeTo(snack.displayY, .1));
-      expect(upperAccess.displayX - snack.displayX, lessThanOrEqualTo(18));
+      expect(upperAccess.displayX, greaterThan(corridorEnd.displayX));
+      expect(upperAccess.displayX, closeTo(snack.displayX, 1));
+      expect(snack.displayY, greaterThan(upperAccess.displayY));
+      expect(snack.displayY - upperAccess.displayY, lessThanOrEqualTo(18));
     },
   );
 
