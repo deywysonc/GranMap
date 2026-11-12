@@ -65,7 +65,7 @@ void main() {
           'ground_c1_end__ground_ramp_access_corner',
         ]),
       );
-      expect(result.warning, contains('sincronizados'));
+      expect(result.warning, isNull);
     },
   );
 
@@ -87,7 +87,7 @@ void main() {
       _Store(cached: legacy),
     ).loadCampus();
     expect(result.campus.building.version, '0.12-floorplan-v12');
-    expect(result.warning, contains('sincronizados'));
+    expect(result.warning, isNull);
   });
 
   test(

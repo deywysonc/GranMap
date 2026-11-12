@@ -179,8 +179,8 @@ class CampusMapRepository {
       source: CampusMapSource.bundled,
       updatedAt: updatedAt,
       warning: online
-          ? 'Planta atualizada no app • bloqueios sincronizados.'
-          : 'Planta atualizada no app • bloqueios salvos, sem conexão.',
+          ? null
+          : 'Modo offline — mapa e bloqueios salvos, sem conexão.',
     );
   }
 

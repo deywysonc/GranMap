@@ -208,14 +208,14 @@ class _MapFreshnessBanner extends StatelessWidget {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-        color: (bundled ? GranMapColors.violet : GranMapColors.amber)
+        color: (bundled ? GranMapColors.sky : GranMapColors.amber)
             .withValues(alpha: .12),
         child: Row(
           children: [
             Icon(
               bundled ? Icons.offline_bolt_rounded : Icons.cloud_off_rounded,
               size: 17,
-              color: bundled ? GranMapColors.violet : GranMapColors.amber,
+              color: bundled ? GranMapColors.sky : GranMapColors.amber,
             ),
             const SizedBox(width: 8),
             Expanded(

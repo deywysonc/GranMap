@@ -1,8 +1,8 @@
 class ApiConfig {
   const ApiConfig._();
 
-  static const appVersion = '1.6.9';
-  static const appBuild = 21;
+  static const appVersion = '1.6.10';
+  static const appBuild = 22;
 
   static const baseUrl = String.fromEnvironment(
     'GRANMAP_API_URL',

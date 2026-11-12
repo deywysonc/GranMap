@@ -12,51 +12,17 @@ class GranMapBackdrop extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        DecoratedBox(
+        const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: const [GranMapColors.ink, Color(0xFF071424)],
+              colors: [GranMapColors.ink, Color(0xFF071424)],
             ),
-          ),
-        ),
-        Positioned(
-          top: -170,
-          right: -110,
-          child: _Glow(
-            color: GranMapColors.sky.withValues(alpha: .08),
-            size: 360,
-          ),
-        ),
-        Positioned(
-          bottom: 20,
-          left: -150,
-          child: _Glow(
-            color: GranMapColors.orange.withValues(alpha: .045),
-            size: 320,
           ),
         ),
         child,
       ],
-    );
-  }
-}
-
-class _Glow extends StatelessWidget {
-  final Color color;
-  final double size;
-
-  const _Glow({required this.color, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: color),
-      ),
     );
   }
 }
