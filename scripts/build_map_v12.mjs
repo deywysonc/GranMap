@@ -11,7 +11,7 @@ Object.assign(map.metadata, {
   geometryStatus: 'floorplan_relative',
   mapMode: 'architectural_floorplan_with_provisional_ground',
   surveyStatus: 'upper_pdf_and_author_spatial_corrections_v12',
-  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: na lateral esquerda da quadra, junto à sala Isaac Newton e sem circulação ao norte, ficam primeiro a Lanchonete na altura do fim do Corredor Gran e a Rampa acima dela, ambas voltadas para oeste; a circulação segue apenas da altura do Corredor Gran para baixo ao redor da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
+  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: faixa andável oeste colada à sala Isaac Newton ligando ao Corredor Gran; na mesma altura da sala (sem invadir o Corredor Gran nem haver circulação ao norte da quadra) ficam a Lanchonete maior embaixo e a Rampa menor acima dela, ambas voltadas para oeste e com a Quadra logo à direita. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
 });
 map.floors[0].name = 'Térreo';
 map.floors[1].name = 'Piso superior';
@@ -40,7 +40,7 @@ function edge(from, to, distance, type = 'corridor', verification = 'floorplan',
 
 // Facing inward from Entrada Gran: classrooms are on the left; the small
 // ramped room is on the right of the bend, not the multi-floor ramp.
-zone('zone_ground_c1', 'Corredor Gran', 'corridor_gran', 0, 24, 66, 80, 8, 'observed_video');
+zone('zone_ground_c1', 'Corredor Gran', 'corridor_gran', 0, 24, 66, 79.5, 8, 'observed_video');
 zone('zone_ground_gran_entry', 'Entrada Gran', 'corridor_gran', 0, 4, 74, 13, 8, 'user_confirmed');
 zone('zone_ground_gran_bend', 'Acesso Gran', 'corridor_gran', 0, 16, 66, 10, 16, 'user_confirmed');
 display('ground_c1_start', 8, 78);
@@ -96,7 +96,7 @@ for (const [from, to, distance] of [
 ]) edge(from, to, distance, 'provisional_access', 'access_unverified', false);
 
 // Parallel Tyto corridor; rooms alternate on both sides, Secretaria by entry.
-zone('zone_ground_c2', 'Corredor Tyto · Secretaria', 'corridor_tyto', 0, 4, 24, 100, 8, 'observed_video');
+zone('zone_ground_c2', 'Corredor Tyto · Secretaria', 'corridor_tyto', 0, 4, 24, 99.5, 8, 'observed_video');
 zone('zone_ground_secretaria', 'Secretaria', 'administration', 0, 4, 32, 9.5, 14, 'user_confirmed');
 display('ground_secretaria_door', 8.75, 39);
 const tytoIds = ['alan_turing', 'cora_coralina', 'henry_ford', 'albert_einstein', 'socrates', 'karl_marx', 'peter_drucker', 'paulo_freire', 'carlos_drummond', 'zilda_arns', 'maria_lacerda', 'rachel_de_queiroz'];
@@ -106,33 +106,34 @@ for (let i = 0; i < tytoIds.length; i++) {
   zone(`zone_ground_${poi.id}`, poi.name, poi.type, 0, cx - 6.5, i % 2 === 0 ? 32 : 10, 13, 14);
 }
 
-// The circulation continues from Corredor Gran downward around the west, south, and east flanks of the court (never alongside Isaac Newton or north of the court).
-zone('zone_ground_court_west_link', 'Circulação', 'open_area', 0, 98, 32, 6, 34, 'user_confirmed');
-zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 104, 16, 14.5, 50, 'user_confirmed');
-zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 118.5, 16, 31.5, 7, 'user_confirmed');
-zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 143, 23, 7, 44, 'user_confirmed');
-zone('zone_ground_court', 'Quadra', 'court', 0, 119.5, 24, 22, 68, 'user_confirmed');
-zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 105, 66, 13, 12.5, 'user_reported_approximate');
-zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 105, 80, 13, 12, 'user_reported_approximate');
+// Walkable west strip flush with Isaac Newton / Corredor Gran leading to the
+// court flanks; cafeteria (larger) and ramp access (smaller) share Isaac Newton's y-span.
+zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 103.5, 16, 5.5, 76, 'user_confirmed');
+zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 109, 16, 46, 7, 'user_confirmed');
+zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 147.5, 23, 7.5, 44, 'user_confirmed');
+zone('zone_ground_court', 'Quadra', 'court', 0, 124, 24, 22, 68, 'user_confirmed');
+zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 109.5, 74, 13, 11, 'user_reported_approximate');
+zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 109.5, 86, 13, 6, 'user_reported_approximate');
 pois.get('lanchonete').sector = 'Lateral da quadra · fim do Corredor Gran';
 for (const [id, x, y] of [
-  ['ground_court_west_north', 101, 61], ['ground_court_west_mid', 111, 44],
-  ['ground_court_west_south', 111, 19.5], ['ground_court_east_north', 146.5, 63],
-  ['ground_court_east_south', 146.5, 19.5], ['ground_snack_bar', 110.5, 72.25],
-  ['ground_spiral_ramp_landing', 107.5, 86], ['ground_ramp_run_1', 111.5, 86],
-  ['ground_ramp_landing_mid', 115.5, 86],
+  ['ground_c1_end', 103.5, 70], ['ground_c2_end', 103.5, 28],
+  ['ground_court_west_north', 106.25, 70], ['ground_court_west_mid', 106.25, 44],
+  ['ground_court_west_south', 106.25, 19.5], ['ground_court_east_north', 151.25, 63],
+  ['ground_court_east_south', 151.25, 19.5], ['ground_snack_bar', 114, 79.5],
+  ['ground_spiral_ramp_landing', 111.5, 89], ['ground_ramp_run_1', 115.5, 89],
+  ['ground_ramp_landing_mid', 119.5, 89],
 ]) display(id, x, y);
-node('ground_ramp_access_corner', 0, 124, 34, 104.1, 83);
-node('ground_snack_front', 0, 96, 34, 103.8, 72.25, 'open_area');
+node('ground_ramp_access_corner', 0, 124, 34, 106.25, 89);
+node('ground_snack_front', 0, 96, 34, 106.25, 79.5, 'open_area');
 map.edges = map.edges.filter(item =>
   !(item.from === 'ground_c1_end' && item.to === 'ground_spiral_ramp_landing') &&
   !(item.from === 'ground_c1_end' && item.to === 'ground_snack_bar') &&
   !(item.from === 'ground_court_west_north' && item.to === 'ground_court_east_north'));
-edge('ground_c1_end', 'ground_ramp_access_corner', 13, 'ramp_access', 'user_confirmed');
+edge('ground_c1_end', 'ground_ramp_access_corner', 34, 'ramp_access', 'user_confirmed');
 edge('ground_ramp_access_corner', 'ground_spiral_ramp_landing', 5, 'ramp_access', 'user_confirmed');
-edge('ground_c1_end', 'ground_snack_front', 2.3, 'corridor', 'user_confirmed');
-edge('ground_court_west_north', 'ground_snack_front', 11.5, 'open_area', 'user_confirmed');
-edge('ground_snack_front', 'ground_snack_bar', 7, 'service_access', 'user_confirmed');
+edge('ground_court_west_north', 'ground_snack_front', 9.5, 'open_area', 'user_confirmed');
+edge('ground_snack_front', 'ground_ramp_access_corner', 9.5, 'open_area', 'user_confirmed');
+edge('ground_snack_front', 'ground_snack_bar', 8, 'service_access', 'user_confirmed');
 // Preserve the cafeteria anchor as a single-entry leaf node so routes to the
 // upper ramp never cut through its interior.
 
@@ -143,9 +144,9 @@ const services = [
 ];
 for (const [poiId, id, bottom, cy, navY] of services) {
   const poi = pois.get(poiId);
-  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 150, bottom, 14, 13, 'user_confirmed');
-  display(id, 152, cy);
-  node(`${id}_approach`, 0, 122, navY, 146.5, cy);
+  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 155, bottom, 14, 13, 'user_confirmed');
+  display(id, 157, cy);
+  node(`${id}_approach`, 0, 122, navY, 151.25, cy);
   edge(`${id}_approach`, id, 2, 'door', 'user_confirmed');
 }
 map.edges = map.edges.map(item => {
@@ -268,7 +269,7 @@ pois.get('santos_dummont').name = 'Santos Dumont';
 zones.find(item => item.id === 'zone_upper_santos').name = 'Santos Dumont';
 // The court label belongs inside the playing area; route arrival remains at
 // its accessible entrance on the west circulation, rather than on the court.
-pois.get('quadra').displayX = 130.5;
+pois.get('quadra').displayX = 135;
 pois.get('quadra').displayY = 58;
 map.zones = zones;
 
