@@ -14,15 +14,17 @@ import '../storage/secure_session_store.dart';
 class LocalStore {
   static const _ioTimeout = Duration(milliseconds: 1200);
 
-  final SharedPreferencesAsync _prefs;
+  SharedPreferencesAsync? _prefs;
+  SharedPreferencesAsync get _preferences =>
+      _prefs ??= SharedPreferencesAsync();
   final OfflineDatabase _database;
   late final SecureSessionStore _secureSession;
   final Map<String, String> _memoryCache = <String, String>{};
 
   LocalStore({SharedPreferencesAsync? prefs, OfflineDatabase? database})
-    : _prefs = prefs ?? SharedPreferencesAsync(),
+    : _prefs = prefs,
       _database = database ?? OfflineDatabase() {
-    _secureSession = SecureSessionStore(webPreferences: _prefs);
+    _secureSession = SecureSessionStore(webPreferences: prefs);
   }
 
   static const _userKey = 'granmap.auth.user';
@@ -38,7 +40,7 @@ class LocalStore {
   Future<void> _write(String key, String value) async {
     _memoryCache[key] = value;
     try {
-      await _prefs.setString(key, value).timeout(_ioTimeout);
+      await _preferences.setString(key, value).timeout(_ioTimeout);
     } catch (_) {}
 
     if (_usesDatabase) {
@@ -50,7 +52,7 @@ class LocalStore {
 
   Future<String?> _read(String key) async {
     try {
-      final prefVal = await _prefs.getString(key).timeout(_ioTimeout);
+      final prefVal = await _preferences.getString(key).timeout(_ioTimeout);
       if (prefVal != null) {
         _memoryCache[key] = prefVal;
         return prefVal;
@@ -71,7 +73,7 @@ class LocalStore {
   Future<void> _remove(String key) async {
     _memoryCache.remove(key);
     try {
-      await _prefs.remove(key).timeout(_ioTimeout);
+      await _preferences.remove(key).timeout(_ioTimeout);
     } catch (_) {}
     if (_usesDatabase) {
       try {
@@ -214,7 +216,9 @@ class LocalStore {
     final key = _scopeKey('favorites', scope);
     if (!_usesDatabase) {
       try {
-        final values = await _prefs.getStringList(key).timeout(_ioTimeout);
+        final values = await _preferences
+            .getStringList(key)
+            .timeout(_ioTimeout);
         if (values != null) return values;
       } catch (_) {}
       final cached = _memoryCache[key];
@@ -251,7 +255,7 @@ class LocalStore {
       } catch (_) {}
     } else {
       try {
-        await _prefs.setStringList(key, clean).timeout(_ioTimeout);
+        await _preferences.setStringList(key, clean).timeout(_ioTimeout);
       } catch (_) {}
     }
   }
@@ -344,7 +348,7 @@ class LocalStore {
     if (_usesDatabase) {
       operations = await _database.readOutbox(scope);
     } else {
-      final queueRaw = await _prefs.getString(
+      final queueRaw = await _preferences.getString(
         _scopeKey('community.queue', scope),
       );
       operations = queueRaw == null || queueRaw.isEmpty
@@ -405,7 +409,9 @@ class LocalStore {
 
   Future<List<Map<String, dynamic>>> readCommunityQueue(String scope) async {
     if (_usesDatabase) return _database.readOutbox(scope);
-    final raw = await _prefs.getString(_scopeKey('community.queue', scope));
+    final raw = await _preferences.getString(
+      _scopeKey('community.queue', scope),
+    );
     if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
     try {
       return (jsonDecode(raw) as List<dynamic>)
@@ -424,7 +430,7 @@ class LocalStore {
       await _database.replaceOutbox(scope, operations);
       return;
     }
-    await _prefs.setString(
+    await _preferences.setString(
       _scopeKey('community.queue', scope),
       jsonEncode(operations),
     );

@@ -55,13 +55,68 @@ class CampusMapRepository {
        _store = store,
        _assets = assets ?? rootBundle;
 
+  Future<CampusMapSnapshot> loadFastCampus() async {
+    Map<String, dynamic>? cached;
+    List<Map<String, dynamic>> cachedClosures = const [];
+    try {
+      final store = _store ??= LocalStore();
+      await Future.wait([
+        () async {
+          cached = await store.readPublishedMap().timeout(storageTimeout);
+        }(),
+        () async {
+          cachedClosures = await store
+              .readRouteClosures()
+              .timeout(storageTimeout);
+        }(),
+      ]);
+    } catch (_) {
+      // Primeira abertura ou testes sem plugin seguem para o mapa empacotado.
+    }
+
+    if (cached != null && cached!['map_data'] is Map<String, dynamic>) {
+      try {
+        _validatePublication(cached!);
+        if (!_isLegacySeed(cached!)) {
+          return CampusMapSnapshot(
+            campus: CampusMap.fromJson(
+              cached!['map_data'] as Map<String, dynamic>,
+            ),
+            blockedEdgeIds: _closureIds(cachedClosures),
+            version: cached!['version']?.toString() ?? 'cache',
+            source: CampusMapSource.cache,
+            updatedAt: _cachedAt(cached!),
+          );
+        }
+      } catch (_) {
+        // Cache inválido segue para a planta v12 empacotada.
+      }
+    }
+
+    final bundled = await loadBundledCampus();
+    return CampusMapSnapshot(
+      campus: bundled.campus,
+      blockedEdgeIds: _translatedClosureIds(cachedClosures),
+      version: bundled.version,
+      source: CampusMapSource.bundled,
+    );
+  }
+
   Future<CampusMapSnapshot> loadCampus() async {
     Map<String, dynamic>? cached;
     List<Map<String, dynamic>> cachedClosures = const [];
     try {
       final store = _store ??= LocalStore();
-      cached = await store.readPublishedMap().timeout(storageTimeout);
-      cachedClosures = await store.readRouteClosures().timeout(storageTimeout);
+      await Future.wait([
+        () async {
+          cached = await store.readPublishedMap().timeout(storageTimeout);
+        }(),
+        () async {
+          cachedClosures = await store
+              .readRouteClosures()
+              .timeout(storageTimeout);
+        }(),
+      ]);
     } catch (_) {
       // Primeira abertura ou testes sem plugin seguem para rede/asset.
     }
@@ -69,9 +124,16 @@ class CampusMapRepository {
     try {
       final api = _api ??= GranMapApi();
       final store = _store ??= LocalStore();
-      final fetched = await api
+      final mapFuture = api
           .fetchCurrentMapConditional(etag: cached?['_etag']?.toString())
           .timeout(requestTimeout);
+      final closuresFuture = api
+          .fetchRouteClosures()
+          .timeout(requestTimeout)
+          .then<List<Map<String, dynamic>>?>((value) => value)
+          .catchError((_) => null);
+      final fetched = await mapFuture;
+      final remoteClosures = await closuresFuture;
       final publication = fetched.notModified ? cached : fetched.data;
       if (publication == null) {
         throw const ApiException('O cache do mapa está incompleto.', 500);
@@ -79,11 +141,9 @@ class CampusMapRepository {
       _validatePublication(publication);
 
       var closures = cachedClosures;
-      try {
-        closures = await api.fetchRouteClosures().timeout(requestTimeout);
+      if (remoteClosures != null) {
+        closures = remoteClosures;
         unawaited(_saveSafely(() => store.saveRouteClosures(closures)));
-      } catch (_) {
-        // Um erro nos bloqueios não descarta uma versão válida do mapa.
       }
 
       final cachedAt = DateTime.now();
@@ -114,20 +174,21 @@ class CampusMapRepository {
             : cachedAt,
       );
     } catch (error) {
-      if (cached != null && cached['map_data'] is Map<String, dynamic>) {
+      final cachedMap = cached;
+      if (cachedMap != null && cachedMap['map_data'] is Map<String, dynamic>) {
         try {
-          _validatePublication(cached);
-          if (_isLegacySeed(cached)) {
+          _validatePublication(cachedMap);
+          if (_isLegacySeed(cachedMap)) {
             return await _updatedBundled(cachedClosures, online: false);
           }
           return CampusMapSnapshot(
             campus: CampusMap.fromJson(
-              cached['map_data'] as Map<String, dynamic>,
+              cachedMap['map_data'] as Map<String, dynamic>,
             ),
             blockedEdgeIds: _closureIds(cachedClosures),
-            version: cached['version']?.toString() ?? 'cache',
+            version: cachedMap['version']?.toString() ?? 'cache',
             source: CampusMapSource.cache,
-            updatedAt: _cachedAt(cached),
+            updatedAt: _cachedAt(cachedMap),
             warning: _safeWarning(error),
           );
         } catch (_) {

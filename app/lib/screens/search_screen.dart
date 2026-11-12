@@ -54,6 +54,12 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.campus != widget.campus) _apply();
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _session.removeListener(_sessionChanged);
@@ -221,7 +227,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     gradient: LinearGradient(
                       colors: [
                         GranMapColors.orange.withValues(alpha: .14),
-                        GranMapColors.violet.withValues(alpha: .08),
+                        GranMapColors.sky.withValues(alpha: .08),
                       ],
                     ),
                     child: Row(

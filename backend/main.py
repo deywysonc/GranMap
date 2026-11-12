@@ -3,6 +3,7 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field
 
 from auth_router import (
@@ -69,6 +70,7 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["ETag", "X-Request-ID", "Retry-After"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=512)
 install_http_middleware(app, settings)
 app.include_router(auth_router)
 app.include_router(map_router)

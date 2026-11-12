@@ -38,7 +38,10 @@ class CampusMapCanvas extends StatefulWidget {
 class CampusMapCanvasState extends State<CampusMapCanvas> {
   final TransformationController _controller = TransformationController();
   Size _viewport = Size.zero;
+  double _zoom = 1;
   String? _tappedPoiId;
+  MapSceneGeometry? _cachedGeometry;
+  bool? _cachedCompact;
 
   @override
   void initState() {
@@ -51,6 +54,7 @@ class CampusMapCanvasState extends State<CampusMapCanvas> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.floor != widget.floor || oldWidget.campus != widget.campus) {
       _tappedPoiId = null;
+      _cachedGeometry = null;
       resetView();
     }
   }
@@ -63,7 +67,44 @@ class CampusMapCanvasState extends State<CampusMapCanvas> {
   }
 
   void _onTransformChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final nextZoom = _controller.value.getMaxScaleOnAxis();
+    if ((nextZoom - _zoom).abs() >= 0.03 ||
+        _zoomTier(nextZoom) != _zoomTier(_zoom)) {
+      setState(() => _zoom = nextZoom);
+    }
+  }
+
+  int _zoomTier(double z) {
+    if (z >= 1.8) return 3;
+    if (z >= 1.4) return 2;
+    if (z >= 1.32) return 1;
+    return 0;
+  }
+
+  MapSceneGeometry _geometryFor(Size viewport, bool compact) {
+    final cached = _cachedGeometry;
+    if (cached != null &&
+        _cachedCompact == compact &&
+        cached.campus == widget.campus &&
+        cached.floor == widget.floor &&
+        cached.viewport == viewport) {
+      return cached;
+    }
+    final next = MapSceneGeometry(
+      campus: widget.campus,
+      floor: widget.floor,
+      viewport: viewport,
+      padding: EdgeInsets.fromLTRB(
+        compact ? 20 : 38,
+        28,
+        compact ? 20 : 38,
+        64,
+      ),
+    );
+    _cachedGeometry = next;
+    _cachedCompact = compact;
+    return next;
   }
 
   /// Available to screen-level recenter controls through a GlobalKey.
@@ -98,18 +139,9 @@ class CampusMapCanvasState extends State<CampusMapCanvas> {
             ? constraints.maxHeight
             : width / 1.6;
         _viewport = Size(width, height);
-        final geometry = MapSceneGeometry(
-          campus: widget.campus,
-          floor: widget.floor,
-          viewport: _viewport,
-          padding: EdgeInsets.fromLTRB(
-            width < 500 ? 20 : 38,
-            28,
-            width < 500 ? 20 : 38,
-            64,
-          ),
-        );
+        final geometry = _geometryFor(_viewport, width < 500);
         final zoom = _controller.value.getMaxScaleOnAxis();
+        _zoom = zoom;
         final selected = widget.campus.poiById(
           widget.selectedPoiId ?? _tappedPoiId ?? '',
         );
@@ -136,20 +168,22 @@ class CampusMapCanvasState extends State<CampusMapCanvas> {
                     child: SizedBox(
                       width: width,
                       height: height,
-                      child: CustomPaint(
-                        key: const ValueKey('granmap-floor-canvas'),
-                        painter: _FloorPlanPainter(
-                          geometry: geometry,
-                          route: widget.route,
-                          activeNodeId: widget.activeNodeId,
-                          userPosition: widget.userPosition,
-                          selectedPoiId: selected?.id,
-                          zoom: zoom,
-                          onPoiSelected: _selectPoi,
-                          fontFamily: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.fontFamily,
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          key: const ValueKey('granmap-floor-canvas'),
+                          painter: _FloorPlanPainter(
+                            geometry: geometry,
+                            route: widget.route,
+                            activeNodeId: widget.activeNodeId,
+                            userPosition: widget.userPosition,
+                            selectedPoiId: selected?.id,
+                            zoom: zoom,
+                            onPoiSelected: _selectPoi,
+                            fontFamily: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.fontFamily,
+                          ),
                         ),
                       ),
                     ),
@@ -1113,7 +1147,8 @@ class _FloorPlanPainter extends CustomPainter {
           ),
       ];
   @override
-  bool shouldRebuildSemantics(covariant _FloorPlanPainter oldDelegate) => true;
+  bool shouldRebuildSemantics(covariant _FloorPlanPainter oldDelegate) =>
+      oldDelegate.geometry != geometry;
   @override
   bool shouldRepaint(covariant _FloorPlanPainter oldDelegate) =>
       oldDelegate.geometry != geometry ||

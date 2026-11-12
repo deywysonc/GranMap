@@ -151,9 +151,9 @@ Para o servidor ARM64 compartilhado do Web Lab/Coolify, use
 [`deploy/coolify/README.md`](deploy/coolify/README.md). Essa variante constrói
 PostGIS para ARM64, aplica limites de CPU/RAM e não ocupa portas públicas do host.
 
-## Publicação e download (v1.6.10)
+## Publicação e download (v1.6.11)
 
-A versão atual (`1.6.10+22`) está publicada com API FastAPI, PostgreSQL/PostGIS
+A versão atual (`1.6.11+23`) está publicada com API FastAPI, PostgreSQL/PostGIS
 e painel administrativo via `compose.coolify.yaml` em HTTPS:
 
 - Portal e painel: `https://granmap.168.119.244.43.sslip.io`

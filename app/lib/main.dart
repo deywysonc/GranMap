@@ -50,31 +50,81 @@ class GranMapBootstrap extends StatefulWidget {
 class _GranMapBootstrapState extends State<GranMapBootstrap> {
   final CampusMapRepository _repository = CampusMapRepository();
   late Future<CampusMapSnapshot> _campusFuture;
+  CampusMapSnapshot? _liveSnapshot;
+  bool _syncStarted = false;
 
   @override
   void initState() {
     super.initState();
+    AppRuntimeConfig.instance.addListener(_onRuntimeConfigChanged);
     _campusFuture = _initializeApp();
   }
 
+  @override
+  void dispose() {
+    AppRuntimeConfig.instance.removeListener(_onRuntimeConfigChanged);
+    super.dispose();
+  }
+
+  void _onRuntimeConfigChanged() {
+    if (mounted) setState(() {});
+  }
+
   Future<CampusMapSnapshot> _initializeApp() async {
-    try {
-      await Future.wait([
-        AppPreferences.instance.initialize(),
-        AppSession.instance.initialize(),
-        AppRuntimeConfig.instance.initialize(),
-      ]).timeout(const Duration(seconds: 8));
-    } on TimeoutException {
-      // O mapa interno deve abrir mesmo que um plugin ou a rede não responda.
+    late CampusMapSnapshot fast;
+    await Future.wait([
+      AppPreferences.instance.initialize().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {},
+      ),
+      AppSession.instance.initialize().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {},
+      ),
+      AppRuntimeConfig.instance.initialize().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () {},
+      ),
+      _repository
+          .loadFastCampus()
+          .timeout(
+            const Duration(seconds: 2),
+            onTimeout: _repository.loadBundledCampus,
+          )
+          .then((value) => fast = value),
+    ]);
+    if (!_syncStarted) {
+      _syncStarted = true;
+      unawaited(_syncCampusInBackground(fast));
     }
-    return _repository.loadCampus().timeout(
-      const Duration(seconds: 7),
-      onTimeout: _repository.loadBundledCampus,
-    );
+    return fast;
+  }
+
+  Future<void> _syncCampusInBackground(CampusMapSnapshot baseline) async {
+    try {
+      final fresh = await _repository.loadCampus().timeout(
+        const Duration(seconds: 7),
+      );
+      if (!mounted) return;
+      final changed =
+          fresh.version != baseline.version ||
+          fresh.blockedEdgeIds.length != baseline.blockedEdgeIds.length ||
+          !fresh.blockedEdgeIds.containsAll(baseline.blockedEdgeIds) ||
+          fresh.warning != baseline.warning;
+      if (changed) {
+        setState(() => _liveSnapshot = fresh);
+      }
+    } catch (_) {
+      // A abertura rápida com mapa local/em cache continua funcional.
+    }
   }
 
   void _retryInitialization() {
-    setState(() => _campusFuture = _initializeApp());
+    setState(() {
+      _liveSnapshot = null;
+      _syncStarted = false;
+      _campusFuture = _initializeApp();
+    });
   }
 
   @override
@@ -114,7 +164,7 @@ class _GranMapBootstrapState extends State<GranMapBootstrap> {
           );
         }
 
-        final data = snapshot.data!;
+        final data = _liveSnapshot ?? snapshot.data!;
         if (AppRuntimeConfig.instance.maintenanceMode ||
             AppRuntimeConfig.instance.requiresUpdate) {
           return AvailabilityScreen(

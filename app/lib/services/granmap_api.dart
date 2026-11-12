@@ -12,13 +12,16 @@ import '../positioning/magnetic_fingerprint_matcher.dart';
 class GranMapApi {
   static const _defaultTimeout = Duration(seconds: 6);
   static const _authTimeout = Duration(seconds: 12);
+  static final http.Client _sharedClient = http.Client();
 
   final http.Client _client;
+  final bool _ownsClient;
   final String baseUrl;
   int _requestSequence = 0;
 
   GranMapApi({http.Client? client, this.baseUrl = ApiConfig.baseUrl})
-    : _client = client ?? http.Client();
+    : _client = client ?? _sharedClient,
+      _ownsClient = client != null;
 
   Future<bool> health() async {
     try {
@@ -629,7 +632,9 @@ class GranMapApi {
     );
   }
 
-  void dispose() => _client.close();
+  void dispose() {
+    if (_ownsClient) _client.close();
+  }
 }
 
 enum ApiFailureKind {

@@ -213,4 +213,19 @@ class MapSceneGeometry {
       .replaceAll(RegExp(r'—.*|·.*'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is MapSceneGeometry &&
+          campus == other.campus &&
+          floor == other.floor &&
+          viewport == other.viewport &&
+          scale == other.scale &&
+          origin == other.origin &&
+          bounds == other.bounds;
+
+  @override
+  int get hashCode =>
+      Object.hash(campus, floor, viewport, scale, origin, bounds);
 }

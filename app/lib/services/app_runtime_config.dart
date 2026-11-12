@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../config/api_config.dart';
@@ -36,8 +38,15 @@ class AppRuntimeConfig extends ChangeNotifier {
 
   Future<void> initialize() async {
     if (_initialized) return;
-    await refresh();
+    try {
+      final cached = await _store.readRuntimeConfig();
+      if (cached != null) _apply(cached, fromCache: true);
+    } catch (_) {
+      // Os padrões mantêm o núcleo disponível no primeiro uso offline.
+    }
     _initialized = true;
+    scheduleMicrotask(notifyListeners);
+    unawaited(refresh());
   }
 
   Future<void> refresh() async {

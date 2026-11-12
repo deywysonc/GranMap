@@ -139,19 +139,21 @@ class _CampusTwinCanvasState extends State<CampusTwinCanvas> {
                             );
                             _rotation += details.focalPointDelta.dx * .008;
                           }),
-                          child: CustomPaint(
-                            key: const ValueKey('campus-twin-drawing'),
-                            painter: _CampusTwinPainter(
-                              campus: widget.campus,
-                              focusFloor: widget.focusFloor,
-                              route: widget.route,
-                              userPosition: widget.userPosition,
-                              selectedPoiId: widget.selectedPoiId,
-                              projection: projection,
-                              fontFamily: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.fontFamily,
+                          child: RepaintBoundary(
+                            child: CustomPaint(
+                              key: const ValueKey('campus-twin-drawing'),
+                              painter: _CampusTwinPainter(
+                                campus: widget.campus,
+                                focusFloor: widget.focusFloor,
+                                route: widget.route,
+                                userPosition: widget.userPosition,
+                                selectedPoiId: widget.selectedPoiId,
+                                projection: projection,
+                                fontFamily: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.fontFamily,
+                              ),
                             ),
                           ),
                         ),
@@ -832,7 +834,14 @@ class _CampusTwinPainter extends CustomPainter {
   ];
 
   @override
-  bool shouldRepaint(covariant _CampusTwinPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _CampusTwinPainter oldDelegate) =>
+      oldDelegate.campus != campus ||
+      oldDelegate.focusFloor != focusFloor ||
+      oldDelegate.route != route ||
+      oldDelegate.userPosition != userPosition ||
+      oldDelegate.selectedPoiId != selectedPoiId ||
+      oldDelegate.projection != projection ||
+      oldDelegate.fontFamily != fontFamily;
 }
 
 class _TwinProjection {
@@ -933,6 +942,31 @@ class _TwinProjection {
     // Y-down: preserve that orientation before applying the floor elevation.
     return Offset(rotatedX, -rotatedY * .58 - lift);
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _TwinProjection &&
+          campus == other.campus &&
+          size == other.size &&
+          focusFloor == other.focusFloor &&
+          showBothFloors == other.showBothFloors &&
+          rotation == other.rotation &&
+          explosion == other.explosion &&
+          zoom == other.zoom &&
+          zoomTarget == other.zoomTarget;
+
+  @override
+  int get hashCode => Object.hash(
+    campus,
+    size,
+    focusFloor,
+    showBothFloors,
+    rotation,
+    explosion,
+    zoom,
+    zoomTarget,
+  );
 }
 
 class _TwinLabel {

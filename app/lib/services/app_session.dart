@@ -57,25 +57,23 @@ class AppSession extends ChangeNotifier {
     String? cachedToken;
     AppUser? cachedUser;
 
-    try {
-      cachedToken = await _store.readToken().timeout(storageTimeout);
-    } catch (_) {}
-    try {
-      cachedUser = await _store.readUser().timeout(storageTimeout);
-    } catch (_) {}
-    var reachable = false;
-    try {
-      reachable = await _api.health().timeout(authTimeout);
-    } catch (_) {}
+    await Future.wait([
+      () async {
+        try {
+          cachedToken = await _store.readToken().timeout(storageTimeout);
+        } catch (_) {}
+      }(),
+      () async {
+        try {
+          cachedUser = await _store.readUser().timeout(storageTimeout);
+        } catch (_) {}
+      }(),
+    ]);
 
     if (_isCurrent(generation)) {
       _token = cachedToken;
       _user = cachedUser;
-      _backendReachable = reachable;
-      if (reachable && cachedToken != null) {
-        await _refreshUser(cachedToken, generation);
-      }
-      if (_isCurrent(generation) && (_token == null || _user == null)) {
+      if (_token == null || _user == null) {
         _clearMemory();
       }
     }
@@ -83,7 +81,10 @@ class AppSession extends ChangeNotifier {
     if (_disposed) return;
     _initialized = true;
     _notify();
-    if (_isCurrent(generation)) unawaited(refreshNotificationCount());
+    if (_isCurrent(generation)) {
+      unawaited(refreshBackendState());
+      if (isLoggedIn) unawaited(refreshNotificationCount());
+    }
   }
 
   Future<void> login({required String email, required String password}) async {
@@ -188,24 +189,29 @@ class AppSession extends ChangeNotifier {
   Future<void> refreshBackendState() async {
     final generation = _sessionGeneration;
     final currentToken = _token;
+    if (currentToken != null) {
+      final reached = await _refreshUser(currentToken, generation);
+      if (!_isCurrent(generation)) return;
+      _backendReachable = reached;
+      _notify();
+      return;
+    }
     var reachable = false;
     try {
       reachable = await _api.health().timeout(authTimeout);
     } catch (_) {}
     if (!_isCurrent(generation)) return;
     _backendReachable = reachable;
-    if (reachable && currentToken != null) {
-      await _refreshUser(currentToken, generation);
-    }
     _notify();
   }
 
-  Future<void> _refreshUser(String currentToken, int generation) async {
+  Future<bool> _refreshUser(String currentToken, int generation) async {
     try {
       final updated = await _api.fetchMe(currentToken).timeout(authTimeout);
-      if (!_isCurrent(generation)) return;
+      if (!_isCurrent(generation)) return true;
       await _persistSession(currentToken, updated, generation);
       if (_isCurrent(generation)) _user = updated;
+      return true;
     } on ApiException catch (error) {
       if (error.statusCode == 401 && _isCurrent(generation)) {
         final expiredGeneration = ++_sessionGeneration;
@@ -213,8 +219,9 @@ class AppSession extends ChangeNotifier {
         _notify();
         await _clearStoredSession(expiredGeneration);
       }
+      return error.statusCode > 0;
     } catch (_) {
-      // A atualização remota pode falhar; erros de persistência já são visíveis.
+      return false;
     }
   }
 

@@ -8,7 +8,9 @@ class SecureSessionStore {
   static const _opTimeout = Duration(milliseconds: 1200);
 
   final FlutterSecureStorage _secureStorage;
-  final SharedPreferencesAsync _preferences;
+  SharedPreferencesAsync? _prefs;
+  SharedPreferencesAsync get _preferences =>
+      _prefs ??= SharedPreferencesAsync();
   String? _memoryToken;
 
   SecureSessionStore({
@@ -18,7 +20,7 @@ class SecureSessionStore {
            const FlutterSecureStorage(
              aOptions: AndroidOptions(resetOnError: true),
            ),
-       _preferences = webPreferences ?? SharedPreferencesAsync();
+       _prefs = webPreferences;
 
   Future<void> writeToken(String token) async {
     _memoryToken = token;
