@@ -138,9 +138,9 @@ void main() {
 
       expect(snack.displayX, greaterThan(corridorEnd.displayX));
       expect(upperAccess.displayX, greaterThan(corridorEnd.displayX));
-      expect(upperAccess.displayX, closeTo(snack.displayX, 1));
-      expect(snack.displayY, greaterThan(upperAccess.displayY));
-      expect(snack.displayY - upperAccess.displayY, lessThanOrEqualTo(18));
+      expect(upperAccess.displayX, closeTo(snack.displayX, 3.5));
+      expect(upperAccess.displayY, greaterThan(snack.displayY));
+      expect(upperAccess.displayY - snack.displayY, lessThanOrEqualTo(18));
     },
   );
 

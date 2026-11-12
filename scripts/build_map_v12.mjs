@@ -11,7 +11,7 @@ Object.assign(map.metadata, {
   geometryStatus: 'floorplan_relative',
   mapMode: 'architectural_floorplan_with_provisional_ground',
   surveyStatus: 'upper_pdf_and_author_spatial_corrections_v12',
-  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: lanchonete acima da rampa na lateral esquerda da quadra, ambas voltadas para a circulação oeste; circulação da quadra apenas pelo sul e laterais, sem área de circulação ao norte da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
+  importantNote: 'Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: na lateral esquerda da quadra, junto à sala Isaac Newton e sem circulação ao norte, ficam primeiro a Lanchonete na altura do fim do Corredor Gran e a Rampa acima dela, ambas voltadas para oeste; a circulação segue apenas da altura do Corredor Gran para baixo ao redor da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.',
 });
 map.floors[0].name = 'Térreo';
 map.floors[1].name = 'Piso superior';
@@ -106,33 +106,33 @@ for (let i = 0; i < tytoIds.length; i++) {
   zone(`zone_ground_${poi.id}`, poi.name, poi.type, 0, cx - 6.5, i % 2 === 0 ? 32 : 10, 13, 14);
 }
 
-// The circulation goes AROUND the bottom and flanks of the sports court, never across its playing area or north of the court.
-zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 104, 16, 8, 76, 'user_confirmed');
-zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 112, 16, 47, 7, 'user_confirmed');
-zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 152, 23, 7, 44, 'user_confirmed');
-zone('zone_ground_court', 'Quadra', 'court', 0, 129, 24, 22, 68, 'user_confirmed');
-zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 113, 79, 14, 13, 'user_reported_approximate');
-zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 113, 65, 14, 12, 'user_reported_approximate');
+// The circulation continues from Corredor Gran downward around the west, south, and east flanks of the court (never alongside Isaac Newton or north of the court).
+zone('zone_ground_court_west_link', 'Circulação', 'open_area', 0, 98, 32, 6, 34, 'user_confirmed');
+zone('zone_ground_court_west', 'Circulação', 'open_area', 0, 104, 16, 14.5, 50, 'user_confirmed');
+zone('zone_ground_court_south', 'Circulação', 'open_area', 0, 118.5, 16, 31.5, 7, 'user_confirmed');
+zone('zone_ground_court_east', 'Circulação', 'open_area', 0, 143, 23, 7, 44, 'user_confirmed');
+zone('zone_ground_court', 'Quadra', 'court', 0, 119.5, 24, 22, 68, 'user_confirmed');
+zone('zone_ground_snack', 'Lanchonete', 'cafeteria', 0, 105, 66, 13, 12.5, 'user_reported_approximate');
+zone('zone_ground_upper_access', 'Rampa · subir', 'ramp', 0, 105, 80, 13, 12, 'user_reported_approximate');
 pois.get('lanchonete').sector = 'Lateral da quadra · fim do Corredor Gran';
 for (const [id, x, y] of [
-  ['ground_court_west_north', 108, 69], ['ground_court_west_mid', 108, 44],
-  ['ground_court_west_south', 108, 19.5], ['ground_court_east_north', 155.5, 63],
-  ['ground_court_east_south', 155.5, 19.5], ['ground_snack_bar', 116, 85.5],
-  ['ground_spiral_ramp_landing', 115.5, 71.5], ['ground_ramp_run_1', 120, 71.5],
-  ['ground_ramp_landing_mid', 124.5, 71.5],
+  ['ground_court_west_north', 101, 61], ['ground_court_west_mid', 111, 44],
+  ['ground_court_west_south', 111, 19.5], ['ground_court_east_north', 146.5, 63],
+  ['ground_court_east_south', 146.5, 19.5], ['ground_snack_bar', 110.5, 72.25],
+  ['ground_spiral_ramp_landing', 107.5, 86], ['ground_ramp_run_1', 111.5, 86],
+  ['ground_ramp_landing_mid', 115.5, 86],
 ]) display(id, x, y);
-node('ground_ramp_access_corner', 0, 124, 34, 110.5, 71.5);
-node('ground_snack_front', 0, 96, 34, 108, 85.5, 'open_area');
+node('ground_ramp_access_corner', 0, 124, 34, 104.1, 83);
+node('ground_snack_front', 0, 96, 34, 103.8, 72.25, 'open_area');
 map.edges = map.edges.filter(item =>
   !(item.from === 'ground_c1_end' && item.to === 'ground_spiral_ramp_landing') &&
   !(item.from === 'ground_c1_end' && item.to === 'ground_snack_bar') &&
   !(item.from === 'ground_court_west_north' && item.to === 'ground_court_east_north'));
-edge('ground_c1_end', 'ground_ramp_access_corner', 6.5, 'ramp_access', 'user_confirmed');
+edge('ground_c1_end', 'ground_ramp_access_corner', 13, 'ramp_access', 'user_confirmed');
 edge('ground_ramp_access_corner', 'ground_spiral_ramp_landing', 5, 'ramp_access', 'user_confirmed');
-edge('ground_court_west_north', 'ground_ramp_access_corner', 3.5, 'open_area', 'user_confirmed');
-edge('ground_court_west_north', 'ground_snack_front', 16, 'open_area', 'user_confirmed');
-edge('ground_snack_front', 'ground_snack_bar', 8, 'service_access', 'user_confirmed');
-edge('ground_snack_front', 'ground_ramp_access_corner', 14.5, 'open_area', 'access_unverified', false);
+edge('ground_c1_end', 'ground_snack_front', 2.3, 'corridor', 'user_confirmed');
+edge('ground_court_west_north', 'ground_snack_front', 11.5, 'open_area', 'user_confirmed');
+edge('ground_snack_front', 'ground_snack_bar', 7, 'service_access', 'user_confirmed');
 // Preserve the cafeteria anchor as a single-entry leaf node so routes to the
 // upper ramp never cut through its interior.
 
@@ -143,9 +143,9 @@ const services = [
 ];
 for (const [poiId, id, bottom, cy, navY] of services) {
   const poi = pois.get(poiId);
-  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 159, bottom, 14, 13, 'user_confirmed');
-  display(id, 161, cy);
-  node(`${id}_approach`, 0, 122, navY, 155.5, cy);
+  zone(`zone_ground_${poiId}`, poi.name, poi.type, 0, 150, bottom, 14, 13, 'user_confirmed');
+  display(id, 152, cy);
+  node(`${id}_approach`, 0, 122, navY, 146.5, cy);
   edge(`${id}_approach`, id, 2, 'door', 'user_confirmed');
 }
 map.edges = map.edges.map(item => {
@@ -268,7 +268,7 @@ pois.get('santos_dummont').name = 'Santos Dumont';
 zones.find(item => item.id === 'zone_upper_santos').name = 'Santos Dumont';
 // The court label belongs inside the playing area; route arrival remains at
 // its accessible entrance on the west circulation, rather than on the court.
-pois.get('quadra').displayX = 140;
+pois.get('quadra').displayX = 130.5;
 pois.get('quadra').displayY = 58;
 map.zones = zones;
 

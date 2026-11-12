@@ -40,7 +40,7 @@ void main() {
       (edge) =>
           edge.type == 'open_area' && edge.verification == 'access_unverified',
     );
-    expect(newEdges, hasLength(16));
+    expect(newEdges, hasLength(15));
     for (final edge in newEdges) {
       expect(edge.accessible, isFalse);
       expect(edge.verification, 'access_unverified');
@@ -105,23 +105,26 @@ void main() {
     }
   });
 
-  test('fachadas da lanchonete e rampa se voltam para oeste ao lado da quadra', () {
+  test('lanchonete fica abaixo da rampa e circulação oeste segue do Gran para baixo', () {
     CampusZone zone(String id) => campus.zones.singleWhere((z) => z.id == id);
     final court = zone('zone_ground_court');
     final west = zone('zone_ground_court_west');
     final south = zone('zone_ground_court_south');
     final snack = zone('zone_ground_snack');
     final ramp = zone('zone_ground_upper_access');
+    final isaac = zone('zone_ground_isaac_newton');
     expect(
       campus.zones.any((z) => z.id == 'zone_ground_court_north'),
       isFalse,
     );
     expect(west.type, 'open_area');
     expect(south.type, 'open_area');
+    expect(west.y + west.height, lessThanOrEqualTo(isaac.y));
     expect(south.y + south.height, lessThan(court.y));
-    expect(court.y + court.height, snack.y + snack.height);
+    expect(court.y + court.height, ramp.y + ramp.height);
+    expect(ramp.y, greaterThanOrEqualTo(snack.y + snack.height));
     expect(snack.x, ramp.x);
-    expect(west.x + west.width, lessThan(snack.x));
+    expect(isaac.x + isaac.width, lessThan(snack.x));
     expect(snack.x + snack.width, lessThan(court.x));
     expect(campus.nodeById('ground_snack_front')!.displayX, lessThan(snack.x));
     expect(

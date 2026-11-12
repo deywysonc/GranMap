@@ -133,10 +133,12 @@ void main() {
     }
   }
 
-  test('coloca cantina e rampa lado a lado na lateral esquerda da quadra', () {
+  test('coloca lanchonete abaixo da rampa ao lado da Isaac Newton e da quadra', () {
     final snack = _zone(campus, 'zone_ground_snack');
     final ramp = _zone(campus, 'zone_ground_upper_access');
     final court = _zone(campus, 'zone_ground_court');
+    final west = _zone(campus, 'zone_ground_court_west');
+    final isaac = _zone(campus, 'zone_ground_isaac_newton');
     final poi = campus.poiById('lanchonete')!;
     final anchor = campus.nodeById('ground_snack_bar')!;
 
@@ -144,25 +146,27 @@ void main() {
       campus.zones.any((zone) => zone.id == 'zone_ground_court_north'),
       isFalse,
     );
-    expect(_rect(snack), const Rect.fromLTWH(113, 79, 14, 13));
-    expect(_rect(ramp), const Rect.fromLTWH(113, 65, 14, 12));
-    expect(_rect(court), const Rect.fromLTWH(129, 24, 22, 68));
+    expect(_rect(snack), const Rect.fromLTWH(105, 66, 13, 12.5));
+    expect(_rect(ramp), const Rect.fromLTWH(105, 80, 13, 12));
+    expect(_rect(court), const Rect.fromLTWH(119.5, 24, 22, 68));
+    expect(west.y + west.height, lessThanOrEqualTo(isaac.y));
     expect(snack.x, ramp.x);
     expect(snack.x + snack.width, ramp.x + ramp.width);
     expect(snack.x + snack.width, lessThan(court.x));
-    expect(snack.y + snack.height, court.y + court.height);
+    expect(ramp.y, greaterThan(snack.y));
+    expect(ramp.y + ramp.height, court.y + court.height);
     expect(ramp.width, greaterThan(ramp.height));
     expect(poi.navigationNode, 'ground_snack_bar');
     expect([poi.x, poi.y, poi.z], [96, 39, 0]);
     expect([anchor.x, anchor.y, anchor.z], [96, 39, 0]);
-    expect(Offset(poi.displayX, poi.displayY), const Offset(116, 85.5));
-    expect(Offset(anchor.displayX, anchor.displayY), const Offset(116, 85.5));
+    expect(Offset(poi.displayX, poi.displayY), const Offset(110.5, 72.25));
+    expect(Offset(anchor.displayX, anchor.displayY), const Offset(110.5, 72.25));
     expect(
       Offset(
         campus.nodeById('ground_spiral_ramp_landing')!.displayX,
         campus.nodeById('ground_spiral_ramp_landing')!.displayY,
       ),
-      const Offset(115.5, 71.5),
+      const Offset(107.5, 86),
     );
   });
 
@@ -181,14 +185,14 @@ void main() {
         ]),
       );
       final corner = campus.nodeById('ground_ramp_access_corner')!;
-      expect(Offset(corner.displayX, corner.displayY), const Offset(110.5, 71.5));
+      expect(Offset(corner.displayX, corner.displayY), const Offset(104.1, 83));
       for (final stage in [
-        (id: 'ground_spiral_ramp_landing', x: 115.5),
-        (id: 'ground_ramp_run_1', x: 120.0),
-        (id: 'ground_ramp_landing_mid', x: 124.5),
+        (id: 'ground_spiral_ramp_landing', x: 107.5),
+        (id: 'ground_ramp_run_1', x: 111.5),
+        (id: 'ground_ramp_landing_mid', x: 115.5),
       ]) {
         final node = campus.nodeById(stage.id)!;
-        expect(Offset(node.displayX, node.displayY), Offset(stage.x, 71.5));
+        expect(Offset(node.displayX, node.displayY), Offset(stage.x, 86));
       }
       _expectClearOfOtherInteriors(
         campus,

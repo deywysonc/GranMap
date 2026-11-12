@@ -12,7 +12,7 @@
     "distanceUnit": "conceptual_unit",
     "source": "HANDOFF_CODEX_GRANMAP + mapa conceitual v6 + quatro vídeos de referência de 2026-08-20",
     "surveyStatus": "upper_pdf_and_author_spatial_corrections_v12",
-    "importantNote": "Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: lanchonete acima da rampa na lateral esquerda da quadra, ambas voltadas para a circulação oeste; circulação da quadra apenas pelo sul e laterais, sem área de circulação ao norte da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.",
+    "importantNote": "Piso superior baseado nas proporções da planta, com grande espaço caminhável abaixo da galeria, Agronomia à esquerda da rampa e caminhos livres pela área ampla conforme informações do autor. Térreo esquemático: na lateral esquerda da quadra, junto à sala Isaac Newton e sem circulação ao norte, ficam primeiro a Lanchonete na altura do fim do Corredor Gran e a Rampa acima dela, ambas voltadas para oeste; a circulação segue apenas da altura do Corredor Gran para baixo ao redor da quadra. Dois conjuntos de Laboratórios de Química junto da entrada não representam quantidade ou nomes oficiais de salas. Posições, limites e novos atalhos são aproximados, sem portas ou acessibilidade aferidas; escala e distâncias exigem conferência presencial.",
     "mapMode": "architectural_floorplan_with_provisional_ground",
     "evidenceCaptureIds": [
       "capture_entrada_gran_180941",
@@ -392,14 +392,26 @@
       "evidenceCaptureIds": []
     },
     {
+      "id": "zone_ground_court_west_link",
+      "name": "Circulação",
+      "type": "open_area",
+      "floor": 0,
+      "x": 98,
+      "y": 32,
+      "width": 6,
+      "height": 34,
+      "verification": "user_confirmed",
+      "evidenceCaptureIds": []
+    },
+    {
       "id": "zone_ground_court_west",
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
       "x": 104,
       "y": 16,
-      "width": 8,
-      "height": 76,
+      "width": 14.5,
+      "height": 50,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -408,9 +420,9 @@
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 112,
+      "x": 118.5,
       "y": 16,
-      "width": 47,
+      "width": 31.5,
       "height": 7,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
@@ -420,7 +432,7 @@
       "name": "Circulação",
       "type": "open_area",
       "floor": 0,
-      "x": 152,
+      "x": 143,
       "y": 23,
       "width": 7,
       "height": 44,
@@ -432,7 +444,7 @@
       "name": "Quadra",
       "type": "court",
       "floor": 0,
-      "x": 129,
+      "x": 119.5,
       "y": 24,
       "width": 22,
       "height": 68,
@@ -444,10 +456,10 @@
       "name": "Lanchonete",
       "type": "cafeteria",
       "floor": 0,
-      "x": 113,
-      "y": 79,
-      "width": 14,
-      "height": 13,
+      "x": 105,
+      "y": 66,
+      "width": 13,
+      "height": 12.5,
       "verification": "user_reported_approximate",
       "evidenceCaptureIds": []
     },
@@ -456,9 +468,9 @@
       "name": "Rampa · subir",
       "type": "ramp",
       "floor": 0,
-      "x": 113,
-      "y": 65,
-      "width": 14,
+      "x": 105,
+      "y": 80,
+      "width": 13,
       "height": 12,
       "verification": "user_reported_approximate",
       "evidenceCaptureIds": [
@@ -470,7 +482,7 @@
       "name": "Biblioteca",
       "type": "library",
       "floor": 0,
-      "x": 159,
+      "x": 150,
       "y": 52,
       "width": 14,
       "height": 13,
@@ -482,7 +494,7 @@
       "name": "Financeiro",
       "type": "finance",
       "floor": 0,
-      "x": 159,
+      "x": 150,
       "y": 37,
       "width": 14,
       "height": 13,
@@ -494,7 +506,7 @@
       "name": "Banheiros",
       "type": "restroom",
       "floor": 0,
-      "x": 159,
+      "x": 150,
       "y": 22,
       "width": 14,
       "height": 13,
@@ -1117,8 +1129,8 @@
       "y": 39,
       "z": 0,
       "navigationNode": "ground_snack_bar",
-      "displayX": 116,
-      "displayY": 85.5,
+      "displayX": 110.5,
+      "displayY": 72.25,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
     },
@@ -1132,7 +1144,7 @@
       "y": 23,
       "z": 0,
       "navigationNode": "ground_court_west_mid",
-      "displayX": 140,
+      "displayX": 130.5,
       "displayY": 58,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
@@ -1147,7 +1159,7 @@
       "y": 30,
       "z": 0,
       "navigationNode": "ground_services_north",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 59,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1162,7 +1174,7 @@
       "y": 23,
       "z": 0,
       "navigationNode": "ground_services_mid",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 44,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1177,7 +1189,7 @@
       "y": 16,
       "z": 0,
       "navigationNode": "ground_services_south",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 28.5,
       "verification": "user_reported",
       "evidenceCaptureIds": []
@@ -1900,8 +1912,8 @@
       "y": 32,
       "z": 0,
       "type": "open_area",
-      "displayX": 108,
-      "displayY": 69
+      "displayX": 101,
+      "displayY": 61
     },
     {
       "id": "ground_court_west_mid",
@@ -1910,7 +1922,7 @@
       "y": 23,
       "z": 0,
       "type": "open_area",
-      "displayX": 108,
+      "displayX": 111,
       "displayY": 44
     },
     {
@@ -1920,7 +1932,7 @@
       "y": 14,
       "z": 0,
       "type": "open_area",
-      "displayX": 108,
+      "displayX": 111,
       "displayY": 19.5
     },
     {
@@ -1930,7 +1942,7 @@
       "y": 32,
       "z": 0,
       "type": "open_area",
-      "displayX": 155.5,
+      "displayX": 146.5,
       "displayY": 63
     },
     {
@@ -1940,7 +1952,7 @@
       "y": 14,
       "z": 0,
       "type": "open_area",
-      "displayX": 155.5,
+      "displayX": 146.5,
       "displayY": 19.5
     },
     {
@@ -1950,8 +1962,8 @@
       "y": 39,
       "z": 0,
       "type": "service",
-      "displayX": 116,
-      "displayY": 85.5
+      "displayX": 110.5,
+      "displayY": 72.25
     },
     {
       "id": "ground_services_north",
@@ -1960,7 +1972,7 @@
       "y": 30,
       "z": 0,
       "type": "service",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 59
     },
     {
@@ -1970,7 +1982,7 @@
       "y": 23,
       "z": 0,
       "type": "service",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 44
     },
     {
@@ -1980,7 +1992,7 @@
       "y": 16,
       "z": 0,
       "type": "service",
-      "displayX": 161,
+      "displayX": 152,
       "displayY": 28.5
     },
     {
@@ -1990,8 +2002,8 @@
       "y": 8,
       "z": 0,
       "type": "ramp",
-      "displayX": 115.5,
-      "displayY": 71.5
+      "displayX": 107.5,
+      "displayY": 86
     },
     {
       "id": "ground_ramp_run_1",
@@ -2000,8 +2012,8 @@
       "y": 8,
       "z": 0.25,
       "type": "ramp",
-      "displayX": 120,
-      "displayY": 71.5
+      "displayX": 111.5,
+      "displayY": 86
     },
     {
       "id": "ground_ramp_landing_mid",
@@ -2010,8 +2022,8 @@
       "y": 14,
       "z": 0.45,
       "type": "ramp",
-      "displayX": 124.5,
-      "displayY": 71.5
+      "displayX": 115.5,
+      "displayY": 86
     },
     {
       "id": "upper_gate",
@@ -2360,8 +2372,8 @@
       "y": 34,
       "z": 0,
       "type": "corridor",
-      "displayX": 110.5,
-      "displayY": 71.5
+      "displayX": 104.1,
+      "displayY": 83
     },
     {
       "id": "ground_snack_front",
@@ -2370,8 +2382,8 @@
       "y": 34,
       "z": 0,
       "type": "open_area",
-      "displayX": 108,
-      "displayY": 85.5
+      "displayX": 103.8,
+      "displayY": 72.25
     },
     {
       "id": "ground_services_north_approach",
@@ -2380,7 +2392,7 @@
       "y": 30,
       "z": 0,
       "type": "corridor",
-      "displayX": 155.5,
+      "displayX": 146.5,
       "displayY": 59
     },
     {
@@ -2390,7 +2402,7 @@
       "y": 23,
       "z": 0,
       "type": "corridor",
-      "displayX": 155.5,
+      "displayX": 146.5,
       "displayY": 44
     },
     {
@@ -2400,7 +2412,7 @@
       "y": 16,
       "z": 0,
       "type": "corridor",
-      "displayX": 155.5,
+      "displayX": 146.5,
       "displayY": 28.5
     },
     {
@@ -3300,7 +3312,7 @@
     {
       "from": "ground_c1_end",
       "to": "ground_ramp_access_corner",
-      "distance": 6.5,
+      "distance": 13,
       "type": "ramp_access",
       "accessible": true,
       "verification": "user_confirmed",
@@ -3316,10 +3328,10 @@
       "evidenceCaptureIds": []
     },
     {
-      "from": "ground_court_west_north",
-      "to": "ground_ramp_access_corner",
-      "distance": 3.5,
-      "type": "open_area",
+      "from": "ground_c1_end",
+      "to": "ground_snack_front",
+      "distance": 2.3,
+      "type": "corridor",
       "accessible": true,
       "verification": "user_confirmed",
       "evidenceCaptureIds": []
@@ -3327,7 +3339,7 @@
     {
       "from": "ground_court_west_north",
       "to": "ground_snack_front",
-      "distance": 16,
+      "distance": 11.5,
       "type": "open_area",
       "accessible": true,
       "verification": "user_confirmed",
@@ -3336,19 +3348,10 @@
     {
       "from": "ground_snack_front",
       "to": "ground_snack_bar",
-      "distance": 8,
+      "distance": 7,
       "type": "service_access",
       "accessible": true,
       "verification": "user_confirmed",
-      "evidenceCaptureIds": []
-    },
-    {
-      "from": "ground_snack_front",
-      "to": "ground_ramp_access_corner",
-      "distance": 14.5,
-      "type": "open_area",
-      "accessible": false,
-      "verification": "access_unverified",
       "evidenceCaptureIds": []
     },
     {
