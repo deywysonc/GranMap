@@ -10,6 +10,15 @@ import {
   putJson,
   request,
 } from './api'
+import {
+  type AuditCategory,
+  buildMapLookup,
+  closureStatusLabel,
+  formatAuditEntry,
+  formatAuditTimestamp,
+  roleLabel,
+  statusLabel,
+} from './adminHelpers'
 import './styles.css'
 
 type Course = { id: number; name: string }
@@ -76,11 +85,12 @@ type ScheduleConflict = {
   right: Schedule
   kinds: string[]
 }
-type MapNode = { id: string; x: number; y: number; z: number; floor: number; label?: string }
-type MapEdge = { from: string; to: string; type?: string; cost?: number; accessible?: boolean }
-type MapPoi = { id: string; name: string; x: number; y: number; z?: number; floor: number; nodeId?: string }
+type MapNode = { id: string; x: number; y: number; z: number; floor: number; label?: string; type?: string }
+type MapEdge = { id?: string; from: string; to: string; type?: string; cost?: number; accessible?: boolean }
+type MapPoi = { id: string; name: string; x: number; y: number; z?: number; floor: number; sector?: string; nodeId?: string; navigationNode?: string }
 type MapData = {
-  building: { id: string; name: string; version: string }
+  building?: { id: string; name: string; version: string }
+  floors?: { id?: string; name?: string; level: number }[]
   nodes: MapNode[]
   edges: MapEdge[]
   pois: MapPoi[]
@@ -179,13 +189,20 @@ function App() {
         ['rooms', 'Salas'],
         ['schedules', 'Ensalamento'],
         ['maps', 'Mapa & versões'],
-        ['operation', 'Operação ao vivo'],
+        ['operation', 'Operação do mapa'],
       )
       if (user?.role === 'admin') items.push(['users', 'Usuários'])
     }
     if (canModerate) items.push(['audit', 'Auditoria'])
     return items
   }, [canAdmin, canModerate, user?.role])
+
+  const tabSubtitle = (id: string) => ({
+    operation: 'Interdite corredores ou rampas e gerencie os pontos QR de localização.',
+    audit: 'Histórico legível de alterações acadêmicas, publicações do mapa, interdições e moderação.',
+    dashboard: 'Visão geral da base acadêmica e prontidão institucional.',
+    community: 'Sugestões enviadas por alunos e revisão da equipe de moderação.',
+  }[id] ?? 'Dados oficiais têm prioridade sobre contribuições comunitárias.')
 
   const refresh = async () => {
     try {
@@ -217,17 +234,20 @@ function App() {
           current.role === 'coordination' ||
           current.role === 'moderator'
         ) {
-          setAudits(await getJson<Audit[]>('/audit', token))
+          const [auditItems, map] = await Promise.all([
+            getJson<Audit[]>('/audit', token),
+            getJson<CurrentMap>('/maps/current'),
+          ])
+          setAudits(auditItems)
+          setCurrentMap(map)
         }
         if (current.role === 'admin' || current.role === 'coordination') {
           setConflicts(await getJson<ScheduleConflict[]>('/schedule-conflicts', token))
-          const [map, versions, allClosures, mapAnchors] = await Promise.all([
-            getJson<CurrentMap>('/maps/current'),
+          const [versions, allClosures, mapAnchors] = await Promise.all([
             getJson<MapVersion[]>('/maps/versions', token),
             getJson<RouteClosure[]>('/navigation/closures/all', token),
             getJson<PositioningAnchor[]>('/positioning/anchors'),
           ])
-          setCurrentMap(map)
           setMapVersions(versions)
           setClosures(allClosures)
           setAnchors(mapAnchors)
@@ -339,7 +359,7 @@ function App() {
         <div className="header">
           <div>
             <h1>{user ? tabs.find(([id]) => id === tab)?.[1] : 'Acesso institucional'}</h1>
-            <div>Dados oficiais têm prioridade sobre contribuições comunitárias.</div>
+            <div>{user ? tabSubtitle(tab) : 'Dados oficiais têm prioridade sobre contribuições comunitárias.'}</div>
           </div>
           <div className="header-actions">
             {user && (
@@ -378,7 +398,7 @@ function App() {
                   <div className="card spaced">
                     <div className="section-heading">
                       <div>
-                        <small>OPERAÇÃO</small>
+                        <small>AMBIENTE</small>
                         <h2>Status do ambiente</h2>
                       </div>
                       <span className={`badge ${integrationStatus.ready ? 'confirmed' : 'voting'}`}>
@@ -556,15 +576,19 @@ function App() {
                 anchors={anchors}
                 onCreateClosure={data => mutate(
                   () => postJson('/navigation/closures', data, token),
-                  'Corredor bloqueado; rotas ativas serão recalculadas.',
+                  'Interdição ativada; o aplicativo passa a evitar este trecho.',
                 )}
                 onResolveClosure={id => mutate(
                   () => postJson(`/navigation/closures/${id}/resolve`, {}, token),
-                  'Bloqueio encerrado.',
+                  'Passagem reaberta.',
                 )}
                 onCreateAnchor={data => mutate(
                   () => postJson('/positioning/anchors', data, token),
-                  'Âncora de posicionamento cadastrada.',
+                  'Ponto QR cadastrado.',
+                )}
+                onDisableAnchor={id => mutate(
+                  () => deleteJson(`/positioning/anchors/${id}`, token),
+                  'Ponto QR removido.',
                 )}
               />
             )}
@@ -596,7 +620,9 @@ function App() {
               />
             )}
 
-            {tab === 'audit' && canModerate && <AuditPage items={audits} />}
+            {tab === 'audit' && canModerate && (
+              <AuditPage items={audits} users={users} currentMap={currentMap} />
+            )}
           </>
         )}
       </main>
@@ -1314,6 +1340,7 @@ function MapOperationPage({
   onCreateClosure,
   onResolveClosure,
   onCreateAnchor,
+  onDisableAnchor,
 }: {
   current: CurrentMap
   closures: RouteClosure[]
@@ -1321,92 +1348,658 @@ function MapOperationPage({
   onCreateClosure: (data: unknown) => Promise<boolean>
   onResolveClosure: (id: number) => Promise<boolean>
   onCreateAnchor: (data: unknown) => Promise<boolean>
+  onDisableAnchor: (id: number) => Promise<boolean>
 }) {
-  const nodes = new Map(current.map_data.nodes.map(node => [node.id, node]))
-  const edges = current.map_data.edges.map(edge => ({
-    ...edge,
-    id: (edge as MapEdge & { id?: string }).id ?? `${edge.from}__${edge.to}`,
-    floor: nodes.get(edge.from)?.floor ?? 0,
-  }))
-  const [edgeId, setEdgeId] = useState(edges[0]?.id ?? '')
+  const lookup = useMemo(() => buildMapLookup(current.map_data), [current])
+  const nodes = useMemo(
+    () => new Map(current.map_data.nodes.map(node => [node.id, node])),
+    [current],
+  )
+  const anchorsByNodeId = useMemo(() => {
+    const map = new Map<string, PositioningAnchor[]>()
+    for (const anchor of anchors) {
+      const list = map.get(anchor.node_id) ?? []
+      list.push(anchor)
+      map.set(anchor.node_id, list)
+    }
+    return map
+  }, [anchors])
+
+  const activeClosures = useMemo(
+    () => closures.filter(item => item.status === 'active'),
+    [closures],
+  )
+  const resolvedClosures = useMemo(
+    () => closures.filter(item => item.status !== 'active'),
+    [closures],
+  )
+  const activeEdgeIds = useMemo(
+    () => new Set(activeClosures.map(item => item.edge_id)),
+    [activeClosures],
+  )
+
+  const [closureFloorFilter, setClosureFloorFilter] = useState<number | 'all'>('all')
+  const [edgeSearch, setEdgeSearch] = useState('')
+  const [edgeId, setEdgeId] = useState(lookup.edgeOptions[0]?.id ?? '')
   const [reason, setReason] = useState('Manutenção temporária')
-  const [nodeId, setNodeId] = useState(current.map_data.nodes[0]?.id ?? '')
+
+  const [anchorSearch, setAnchorSearch] = useState('')
+  const [nodeId, setNodeId] = useState(lookup.nodeOptions[0]?.id ?? '')
   const [anchorCode, setAnchorCode] = useState('GRAN-')
+
+  const [closureView, setClosureView] = useState<'active' | 'resolved' | 'all'>('active')
+  const [mapFloor, setMapFloor] = useState<number>(lookup.floors[0] ?? 0)
+
+  const filteredEdges = useMemo(() => {
+    const query = edgeSearch.trim().toLocaleLowerCase('pt-BR')
+    return lookup.edgeOptions.filter(option => {
+      if (closureFloorFilter !== 'all' && option.floor !== closureFloorFilter) return false
+      if (query && !option.searchText.includes(query)) return false
+      return true
+    })
+  }, [lookup.edgeOptions, closureFloorFilter, edgeSearch])
+
+  const filteredNodes = useMemo(() => {
+    const query = anchorSearch.trim().toLocaleLowerCase('pt-BR')
+    return lookup.nodeOptions.filter(option => !query || option.searchText.includes(query))
+  }, [lookup.nodeOptions, anchorSearch])
+
+  useEffect(() => {
+    if (filteredEdges.length > 0 && !filteredEdges.some(edge => edge.id === edgeId)) {
+      setEdgeId(filteredEdges[0].id)
+    }
+  }, [filteredEdges, edgeId])
+
+  useEffect(() => {
+    if (filteredNodes.length > 0 && !filteredNodes.some(node => node.id === nodeId)) {
+      setNodeId(filteredNodes[0].id)
+    }
+  }, [filteredNodes, nodeId])
+
+  useEffect(() => {
+    if (!lookup.floors.includes(mapFloor)) setMapFloor(lookup.floors[0] ?? 0)
+  }, [lookup.floors, mapFloor])
+
+  const selectedEdge = lookup.edgeById.get(edgeId)
   const selectedNode = nodes.get(nodeId)
-  const selectedEdge = edges.find(edge => edge.id === edgeId)
+  const poiOptions = filteredNodes.filter(option => option.group === 'poi')
+  const corridorOptions = filteredNodes.filter(option => option.group === 'corridor')
+
+  const visibleClosures = closureView === 'active'
+    ? activeClosures
+    : closureView === 'resolved'
+      ? resolvedClosures
+      : closures
+
+  const floorNodes = current.map_data.nodes.filter(node => node.floor === mapFloor)
+  const floorNodeIds = new Set(floorNodes.map(node => node.id))
+  const floorEdges = (current.map_data.edges ?? []).filter(
+    edge => floorNodeIds.has(edge.from) && floorNodeIds.has(edge.to),
+  )
+  const xs = floorNodes.map(node => node.x)
+  const ys = floorNodes.map(node => node.y)
+  const minX = Math.min(...xs, 0) - 8
+  const maxX = Math.max(...xs, 100) + 8
+  const minY = Math.min(...ys, 0) - 8
+  const maxY = Math.max(...ys, 60) + 8
 
   return (
-    <div className="map-admin-grid">
-      <div>
+    <div className="operation-stack">
+      <div className="operation-summary">
         <div className="card">
-          <h2>Bloqueios e recálculo</h2>
-          <p>Feche uma Edge do grafo. O app consulta a operação e recalcula a rota a partir da posição ativa.</p>
-          <form className="form" onSubmit={event => {
-            event.preventDefault()
-            void onCreateClosure({ edge_id: edgeId, floor: selectedEdge?.floor ?? 0, reason })
-          }}>
-            <select value={edgeId} onChange={event => setEdgeId(event.target.value)}>
-              {edges.map(edge => <option key={edge.id} value={edge.id}>P{edge.floor} • {edge.from} → {edge.to}</option>)}
-            </select>
-            <input value={reason} onChange={event => setReason(event.target.value)} required />
-            <button className="primary">Ativar bloqueio</button>
-          </form>
+          <small>INTERDIÇÕES ATIVAS</small>
+          <div className="metric">{activeClosures.length}</div>
+          <small>{activeClosures.length === 0 ? 'Circulação normal no campus' : 'O app está desviando destes trechos'}</small>
         </div>
-        <div className="card spaced">
-          <h2>Âncoras QR e visuais</h2>
-          <form className="form" onSubmit={event => {
-            event.preventDefault()
-            if (!selectedNode) return
-            void onCreateAnchor({
-              anchor_code: anchorCode, node_id: selectedNode.id, kind: 'qr',
-              x: selectedNode.x, y: selectedNode.y, z: selectedNode.z,
-              floor: selectedNode.floor, heading: 0, metadata: {},
-            })
-          }}>
-            <input value={anchorCode} onChange={event => setAnchorCode(event.target.value)} placeholder="GRAN-ENTRADA-01" required />
-            <select value={nodeId} onChange={event => setNodeId(event.target.value)}>
-              {current.map_data.nodes.map(node => <option key={node.id} value={node.id}>P{node.floor} • {node.label ?? node.id}</option>)}
-            </select>
-            <button className="primary">Cadastrar âncora</button>
-          </form>
-          <small>{anchors.length} âncoras ativas no mapa publicado.</small>
+        <div className="card">
+          <small>PONTOS QR NO CAMPUS</small>
+          <div className="metric">{anchors.length}</div>
+          <small>Placas ativas para leitura no app</small>
+        </div>
+        <div className="card">
+          <small>MAPA EM PRODUÇÃO</small>
+          <div className="metric">{current.version}</div>
+          <small>{lookup.floors.map(floor => lookup.floorLabel(floor)).join(' · ')}</small>
         </div>
       </div>
-      <div className="card table-wrap">
-        <h2>Estado operacional</h2>
-        <table>
-          <thead><tr><th>Trecho</th><th>Motivo</th><th>Estado</th><th></th></tr></thead>
-          <tbody>{closures.map(item => <tr key={item.id}>
-            <td><code>{item.edge_id}</code><br /><small>Piso {item.floor}</small></td>
-            <td>{item.reason}</td>
-            <td><span className={`badge ${item.status === 'active' ? 'contested' : 'confirmed'}`}>{item.status}</span></td>
-            <td>{item.status === 'active' && <button className="secondary" onClick={() => void onResolveClosure(item.id)}>Liberar</button>}</td>
-          </tr>)}</tbody>
-        </table>
-        {closures.length === 0 && <p>Nenhum bloqueio cadastrado.</p>}
+
+      <div className="card">
+        <div className="section-heading">
+          <div>
+            <small>VISÃO INTERATIVA</small>
+            <h2>Mapa do piso para seleção rápida</h2>
+          </div>
+          <div className="legend-row">
+            <span className="legend-item"><i className="dot blocked" /> Interditado</span>
+            <span className="legend-item"><i className="dot selected" /> Selecionado</span>
+            <span className="legend-item"><i className="dot anchor" /> Ponto QR</span>
+          </div>
+        </div>
+        <div className="map-preview">
+          <div className="floor-switcher">
+            {lookup.floors.map(floor => (
+              <button
+                type="button"
+                key={floor}
+                className={mapFloor === floor ? 'active' : ''}
+                onClick={() => setMapFloor(floor)}
+              >
+                {lookup.floorLabel(floor)}
+              </button>
+            ))}
+          </div>
+          <svg
+            viewBox={`${minX} ${minY} ${maxX - minX} ${maxY - minY}`}
+            role="img"
+            aria-label={`Mapa operacional — ${lookup.floorLabel(mapFloor)}`}
+          >
+            {floorEdges.map(edge => {
+              const from = nodes.get(edge.from)
+              const to = nodes.get(edge.to)
+              if (!from || !to) return null
+              const currentId = (edge as MapEdge & { id?: string }).id ?? `${edge.from}__${edge.to}`
+              const isBlocked = activeEdgeIds.has(currentId)
+              const isSelected = currentId === edgeId
+              const classes = [
+                'edge',
+                'clickable',
+                edge.accessible === false ? 'stairs' : '',
+                isBlocked ? 'blocked' : '',
+                isSelected ? 'selected' : '',
+              ].filter(Boolean).join(' ')
+              return (
+                <line
+                  key={currentId}
+                  x1={from.x}
+                  y1={from.y}
+                  x2={to.x}
+                  y2={to.y}
+                  className={classes}
+                  onClick={() => {
+                    setClosureFloorFilter('all')
+                    setEdgeSearch('')
+                    setEdgeId(currentId)
+                  }}
+                >
+                  <title>{lookup.edgeLabelById(currentId)}{isBlocked ? ' (INTERDITADO)' : ''}</title>
+                </line>
+              )
+            })}
+            {floorNodes.map(node => {
+              const nodeAnchors = anchorsByNodeId.get(node.id) ?? []
+              const hasAnchor = nodeAnchors.length > 0
+              const isSelected = node.id === nodeId
+              return (
+                <g
+                  key={node.id}
+                  className="clickable"
+                  onClick={() => {
+                    setAnchorSearch('')
+                    setNodeId(node.id)
+                  }}
+                >
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={hasAnchor ? 2.6 : 1.7}
+                    className={[hasAnchor ? 'anchor' : '', isSelected ? 'selected-node' : ''].filter(Boolean).join(' ')}
+                  />
+                  <title>
+                    {lookup.nodeLabel(node.id)}
+                    {hasAnchor ? ` • QR: ${nodeAnchors.map(a => a.anchor_code).join(', ')}` : ''}
+                  </title>
+                </g>
+              )
+            })}
+            {(current.map_data.pois ?? [])
+              .filter(poi => poi.floor === mapFloor)
+              .map(poi => {
+                const linkedNode = (poi.navigationNode || poi.nodeId || '').trim()
+                const isSelected = Boolean(linkedNode && linkedNode === nodeId)
+                return (
+                  <g
+                    key={poi.id}
+                    className={linkedNode ? 'clickable' : undefined}
+                    onClick={() => {
+                      if (linkedNode) {
+                        setAnchorSearch('')
+                        setNodeId(linkedNode)
+                      }
+                    }}
+                  >
+                    <circle
+                      cx={poi.x}
+                      cy={poi.y}
+                      r={2.7}
+                      className={`poi${isSelected ? ' selected-node' : ''}`}
+                    />
+                    <title>{poi.name}</title>
+                  </g>
+                )
+              })}
+          </svg>
+          <small>
+            Clique em uma linha do mapa para selecionar o trecho que deseja interditar, ou clique em um círculo para escolher o local do ponto QR.
+          </small>
+        </div>
+      </div>
+
+      <div className="map-admin-grid">
+        <div>
+          <div className="card">
+            <h2>1. Interditar corredor ou rampa</h2>
+            <p>
+              Feche temporariamente uma passagem em obra, limpeza ou manutenção. O aplicativo passa a recalcular rotas evitando o trecho bloqueado.
+            </p>
+            <div className="filter-pills">
+              <button
+                type="button"
+                className={closureFloorFilter === 'all' ? 'pill active' : 'pill'}
+                onClick={() => setClosureFloorFilter('all')}
+              >
+                Todos os pisos
+              </button>
+              {lookup.floors.map(floor => (
+                <button
+                  type="button"
+                  key={floor}
+                  className={closureFloorFilter === floor ? 'pill active' : 'pill'}
+                  onClick={() => setClosureFloorFilter(floor)}
+                >
+                  {lookup.floorLabel(floor)}
+                </button>
+              ))}
+            </div>
+            <form
+              className="form"
+              onSubmit={event => {
+                event.preventDefault()
+                if (!edgeId) return
+                void onCreateClosure({
+                  edge_id: edgeId,
+                  floor: selectedEdge?.floor ?? 0,
+                  reason,
+                })
+              }}
+            >
+              <label className="form-field">
+                <span>Buscar trecho ou sala próxima</span>
+                <input
+                  value={edgeSearch}
+                  onChange={event => setEdgeSearch(event.target.value)}
+                  placeholder="Ex.: rampa, Química, Entrada Gran..."
+                />
+              </label>
+              <label className="form-field">
+                <span>Trecho / passagem ({filteredEdges.length})</span>
+                <select value={edgeId} onChange={event => setEdgeId(event.target.value)} required>
+                  {filteredEdges.length === 0 ? (
+                    <option value="">Nenhum trecho encontrado para esse filtro</option>
+                  ) : (
+                    filteredEdges.map(edge => (
+                      <option key={edge.id} value={edge.id}>
+                        {edge.floorName} • {edge.label}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Motivo da interdição</span>
+                <input
+                  value={reason}
+                  onChange={event => setReason(event.target.value)}
+                  placeholder="Ex.: Manutenção temporária, piso molhado"
+                  required
+                />
+              </label>
+              <button className="primary" disabled={!edgeId}>Ativar interdição</button>
+            </form>
+          </div>
+
+          <div className="card spaced">
+            <h2>2. Cadastrar ponto QR de localização</h2>
+            <p>
+              Associe um código QR físico colado na parede a uma sala, entrada ou ponto do corredor para calibrar a posição de quem escanear pelo celular.
+            </p>
+            <form
+              className="form"
+              onSubmit={event => {
+                event.preventDefault()
+                if (!selectedNode) return
+                void onCreateAnchor({
+                  anchor_code: anchorCode.trim(),
+                  node_id: selectedNode.id,
+                  kind: 'qr',
+                  x: selectedNode.x,
+                  y: selectedNode.y,
+                  z: selectedNode.z,
+                  floor: selectedNode.floor,
+                  heading: 0,
+                  metadata: {},
+                })
+              }}
+            >
+              <label className="form-field">
+                <span>Código impresso no QR</span>
+                <input
+                  value={anchorCode}
+                  onChange={event => setAnchorCode(event.target.value)}
+                  placeholder="Ex.: GRAN-ENTRADA-01"
+                  required
+                />
+              </label>
+              <label className="form-field">
+                <span>Buscar local no mapa</span>
+                <input
+                  value={anchorSearch}
+                  onChange={event => setAnchorSearch(event.target.value)}
+                  placeholder="Ex.: Laboratório, Rampa, Entrada..."
+                />
+              </label>
+              <label className="form-field">
+                <span>Local no mapa ({filteredNodes.length})</span>
+                <select value={nodeId} onChange={event => setNodeId(event.target.value)} required>
+                  {poiOptions.length > 0 && (
+                    <optgroup label="Salas e locais principais">
+                      {poiOptions.map(node => (
+                        <option key={node.id} value={node.id}>
+                          {node.floorName} • {node.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {corridorOptions.length > 0 && (
+                    <optgroup label="Corredores e acessos">
+                      {corridorOptions.map(node => (
+                        <option key={node.id} value={node.id}>
+                          {node.floorName} • {node.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {filteredNodes.length === 0 && (
+                    <option value="">Nenhum local encontrado</option>
+                  )}
+                </select>
+              </label>
+              <button className="primary" disabled={!selectedNode}>Cadastrar ponto QR</button>
+            </form>
+          </div>
+        </div>
+
+        <div>
+          <div className="card table-wrap">
+            <div className="section-heading">
+              <div>
+                <h2>Interdições no campus</h2>
+                <small>Controle o que está bloqueado agora e o histórico já reaberto.</small>
+              </div>
+              <div className="filter-pills">
+                <button
+                  type="button"
+                  className={closureView === 'active' ? 'pill active' : 'pill'}
+                  onClick={() => setClosureView('active')}
+                >
+                  Ativas ({activeClosures.length})
+                </button>
+                <button
+                  type="button"
+                  className={closureView === 'resolved' ? 'pill active' : 'pill'}
+                  onClick={() => setClosureView('resolved')}
+                >
+                  Histórico ({resolvedClosures.length})
+                </button>
+                <button
+                  type="button"
+                  className={closureView === 'all' ? 'pill active' : 'pill'}
+                  onClick={() => setClosureView('all')}
+                >
+                  Todas ({closures.length})
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Trecho</th>
+                  <th>Motivo</th>
+                  <th>Situação</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleClosures.map(item => (
+                  <tr key={item.id}>
+                    <td>
+                      <strong>{lookup.edgeLabelById(item.edge_id)}</strong><br />
+                      <small>{lookup.floorLabel(item.floor)}</small>
+                    </td>
+                    <td>
+                      {item.reason}<br />
+                      <small>
+                        {item.created_by_name ? `${item.created_by_name} · ` : ''}
+                        {formatAuditTimestamp(item.starts_at)}
+                      </small>
+                    </td>
+                    <td>
+                      <span className={`badge ${item.status === 'active' ? 'contested' : 'confirmed'}`}>
+                        {closureStatusLabel(item.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {item.status === 'active' && (
+                        <button
+                          className="secondary"
+                          onClick={() => void onResolveClosure(item.id)}
+                        >
+                          Reabrir
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {visibleClosures.length === 0 && (
+              <p>
+                {closureView === 'active'
+                  ? 'Nenhuma interdição ativa no momento.'
+                  : 'Nenhum registro nesta visualização.'}
+              </p>
+            )}
+          </div>
+
+          <div className="card spaced table-wrap">
+            <h2>Pontos QR cadastrados ({anchors.length})</h2>
+            <p>Placas reconhecidas pelo leitor do aplicativo para reposicionar o usuário.</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Código QR</th>
+                  <th>Localização no prédio</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {anchors.map(anchor => (
+                  <tr key={anchor.id}>
+                    <td><code>{anchor.anchor_code}</code></td>
+                    <td>
+                      <strong>{lookup.nodeLabel(anchor.node_id)}</strong><br />
+                      <small>{lookup.floorLabel(anchor.floor)}</small>
+                    </td>
+                    <td>
+                      <button
+                        className="danger"
+                        onClick={() => void onDisableAnchor(anchor.id)}
+                      >
+                        Remover
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {anchors.length === 0 && <p>Nenhum ponto QR cadastrado ainda.</p>}
+          </div>
+        </div>
       </div>
     </div>
   )
 }
 
-function AuditPage({ items }: { items: Audit[] }) {
+function AuditPage({
+  items,
+  users,
+  currentMap,
+}: {
+  items: Audit[]
+  users: User[]
+  currentMap: CurrentMap | null
+}) {
+  const [categoryFilter, setCategoryFilter] = useState<'all' | AuditCategory>('all')
+  const [search, setSearch] = useState('')
+
+  const usersById = useMemo(
+    () => new Map(users.map(item => [item.id, item])),
+    [users],
+  )
+  const usersByEmail = useMemo(
+    () => new Map(users.map(item => [item.email.toLowerCase(), item])),
+    [users],
+  )
+  const mapLookup = useMemo(
+    () => (currentMap ? buildMapLookup(currentMap.map_data) : null),
+    [currentMap],
+  )
+
+  const entries = useMemo(
+    () => items.map(item => ({
+      id: item.id,
+      ...formatAuditEntry(item, {
+        usersById,
+        usersByEmail,
+        edgeLabelById: mapLookup?.edgeLabelById,
+      }),
+    })),
+    [items, usersById, usersByEmail, mapLookup],
+  )
+
+  const counts = useMemo(() => {
+    const mapCounts: Record<AuditCategory, number> = {
+      map: 0,
+      academic: 0,
+      community: 0,
+      system: 0,
+    }
+    for (const entry of entries) mapCounts[entry.category] += 1
+    return mapCounts
+  }, [entries])
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase('pt-BR')
+    return entries.filter(entry => {
+      if (categoryFilter !== 'all' && entry.category !== categoryFilter) return false
+      if (query && !entry.searchText.includes(query)) return false
+      return true
+    })
+  }, [entries, categoryFilter, search])
+
   return (
     <div className="card table-wrap">
-      <h2>Trilha de auditoria</h2>
+      <div className="section-heading">
+        <div>
+          <h2>Histórico de ações</h2>
+          <small>Exibindo {filtered.length} de {entries.length} registros mais recentes</small>
+        </div>
+        <input
+          className="search-input"
+          value={search}
+          onChange={event => setSearch(event.target.value)}
+          placeholder="Buscar por ação, usuário, sala ou turma..."
+          aria-label="Buscar na auditoria"
+        />
+      </div>
+
+      <div className="filter-pills">
+        <button
+          type="button"
+          className={categoryFilter === 'all' ? 'pill active' : 'pill'}
+          onClick={() => setCategoryFilter('all')}
+        >
+          Tudo ({entries.length})
+        </button>
+        <button
+          type="button"
+          className={categoryFilter === 'map' ? 'pill active' : 'pill'}
+          onClick={() => setCategoryFilter('map')}
+        >
+          Mapa e operação ({counts.map})
+        </button>
+        <button
+          type="button"
+          className={categoryFilter === 'academic' ? 'pill active' : 'pill'}
+          onClick={() => setCategoryFilter('academic')}
+        >
+          Acadêmico ({counts.academic})
+        </button>
+        <button
+          type="button"
+          className={categoryFilter === 'community' ? 'pill active' : 'pill'}
+          onClick={() => setCategoryFilter('community')}
+        >
+          Comunidade ({counts.community})
+        </button>
+        <button
+          type="button"
+          className={categoryFilter === 'system' ? 'pill active' : 'pill'}
+          onClick={() => setCategoryFilter('system')}
+        >
+          Sistema e acessos ({counts.system})
+        </button>
+      </div>
+
       <table>
         <thead>
-          <tr><th>Quando</th><th>Ação</th><th>Detalhes</th></tr>
+          <tr>
+            <th>Quando</th>
+            <th>Categoria</th>
+            <th>O que aconteceu</th>
+            <th>Responsável</th>
+          </tr>
         </thead>
         <tbody>
-          {items.map(item => (
-            <tr key={item.id}>
-              <td>{new Date(item.created_at.replace(' ', 'T') + 'Z').toLocaleString('pt-BR')}</td>
-              <td>{item.action}</td>
-              <td><code>{item.details}</code></td>
+          {filtered.map(entry => (
+            <tr key={entry.id}>
+              <td className="nowrap">{entry.when}</td>
+              <td>
+                <span className={`badge ${entry.category === 'map' ? 'voting' : entry.category === 'academic' ? 'confirmed' : ''}`}>
+                  {entry.categoryLabel}
+                </span>
+              </td>
+              <td>
+                <strong>{entry.title}</strong><br />
+                <span>{entry.summary}</span>
+                {entry.rawDetails && (
+                  <details className="audit-tech">
+                    <summary>Registro técnico</summary>
+                    <code>{entry.rawAction} · {entry.rawDetails}</code>
+                  </details>
+                )}
+              </td>
+              <td>{entry.actor}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {filtered.length === 0 && (
+        <p>
+          {entries.length === 0
+            ? 'Nenhuma movimentação registrada ainda.'
+            : 'Nenhum registro encontrado para esse filtro.'}
+        </p>
+      )}
     </div>
   )
 }
@@ -1419,24 +2012,6 @@ function integrationLabel(key: string) {
     erp_academico: 'ERP acadêmico',
     push: 'Push FCM/APNs',
   }[key] ?? key
-}
-
-function roleLabel(role: string) {
-  return {
-    admin: 'Administrador',
-    coordination: 'Coordenação',
-    moderator: 'Moderador',
-  }[role] ?? role
-}
-
-function statusLabel(status: string) {
-  return {
-    unverified: 'Não verificada',
-    voting: 'Em votação',
-    confirmed: 'Confirmada',
-    contested: 'Contestada',
-    rejected: 'Rejeitada',
-  }[status] ?? status
 }
 
 createRoot(document.getElementById('root')!).render(
