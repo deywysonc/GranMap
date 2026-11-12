@@ -135,7 +135,6 @@ const ADMIN_AUTH_MODE =
 
 function App() {
   const [tab, setTab] = useState('dashboard')
-  const [online, setOnline] = useState(false)
   const [token, setToken] = useState(() => {
     const storedToken = sessionStorage.getItem('granmap.admin.token')
     if (storedToken) return storedToken
@@ -191,7 +190,6 @@ function App() {
   const refresh = async () => {
     try {
       await getJson('/health')
-      setOnline(true)
       const [c, su, g, p, r, s, pr, integrations] = await Promise.all([
         getJson<Course[]>('/courses'),
         getJson<Subject[]>('/subjects'),
@@ -249,8 +247,7 @@ function App() {
         setError('A sessão expirou. Entre novamente.')
         return
       }
-      setOnline(false)
-      setError(cause instanceof Error ? cause.message : 'Backend indisponível.')
+      setError(cause instanceof Error ? cause.message : 'Servidor indisponível.')
     }
   }
 
@@ -345,9 +342,6 @@ function App() {
             <div>Dados oficiais têm prioridade sobre contribuições comunitárias.</div>
           </div>
           <div className="header-actions">
-            <span className={`status ${online ? '' : 'offline'}`}>
-              Backend: {online ? 'online' : 'offline'}
-            </span>
             {user && (
               <>
                 <span>{user.name} · {roleLabel(user.role)}</span>
